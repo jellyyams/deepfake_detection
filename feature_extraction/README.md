@@ -13,7 +13,7 @@ To perform feature extraction on a video, create a MPFeatureExtractor or FANFeat
 
 ```
 from mp import MPFeatureExtractor
-fe = MPFeatureExtractor(<INPUT VIDEO PATH>, <DESIRED OUTPUT DIRECTORY PATH>, draw_all_landmarks=True initial_detect=True)
+fe = MPFeatureExtractor(<INPUT VIDEO PATH>, <DESIRED OUTPUT DIRECTORY PATH>, draw_all_landmarks=True, initial_detect=True)
 fe.run_extraction()
 ```
 
