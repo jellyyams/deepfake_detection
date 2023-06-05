@@ -14,7 +14,6 @@ import time
 import cv2
 import logging
 import sys
-
 sys.path.append('/home/hadleigh/Pytorch_Retinaface')
 from data import cfg_mnet, cfg_re50
 from layers.functions.prior_box import PriorBox
@@ -69,10 +68,10 @@ class RetinaFaceDetector(object):
         self.cfg = None
         if network == "mobile0.25":
             self.cfg = cfg_mnet
-            trained_model = '/home/hadleigh/Pytorch_Retinaface/weights/mobilenet0.25_Final.pth' 
+            trained_model = '../common/weights/mobilenet0.25_Final.pth' 
         elif network == "resnet50":
             self.cfg = cfg_re50
-            trained_model = '/home/hadleigh/Pytorch_Retinaface/weights/Resnet50_Final.pth'
+            trained_model = '../common/weights/Resnet50_Final.pth'
         # net and model
         self.net = RetinaFace(cfg=self.cfg, phase = 'test')
         self.net = load_model(self.net, trained_model, False)

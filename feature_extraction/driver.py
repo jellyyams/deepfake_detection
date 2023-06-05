@@ -11,10 +11,10 @@ from stack_vids import stack_vids
 initial_detect = True
 
 trial_name = '5_8'
-input_p1 = '../../inputs/hadleigh1.mp4'
+input_p1 = '../../inputs/hadleigh4.mp4'
 input_p2 = '../../inputs_may18/1_4_phone.mp4'
 
-app = MPFeatureExtractor(input_p1, draw_all_landmarks=True, initial_detect=initial_detect)
+app = MPFeatureExtractor(input_p1, 'mp_output', draw_all_landmarks=True, initial_detect=initial_detect)
 p1_out_name = app.get_output_video_path()
 app.run_extraction()
 # app = MPFeatureExtractor(input_p2, draw_all_landmarks=True, initial_detect=initial_detect)

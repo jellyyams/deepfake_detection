@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import logging
 import logging.config
+import os
 import sys
 sys.path.append('/home/hadleigh/deepfake_detection/common')
 from logging_utils import generate_logging_config
@@ -164,7 +165,11 @@ class FeatureExtractor(object):
             self.input_W , self.input_H = int(self.input_capture.get(3)), int(self.input_capture.get(4)) #input video dimensions
         else:
             raise ValueError("Invalid input video")
- 
+
+        # get output video set up
+        #create output directory if it doesn't already exist
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
         input_vid_name = input_video.split('/')[-1][:-4] #name of video (remove extension)
         if self.initial_detect:
             self.output_video_path = '{}/initdet_{}.mp4'.format(output_directory, input_vid_name)

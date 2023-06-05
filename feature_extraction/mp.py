@@ -13,12 +13,12 @@ from mediapipe.framework.formats import landmark_pb2
 
 
 class MPFeatureExtractor(FeatureExtractor):
-    def __init__(self, input_video,  initial_detect=True, initial_bbox_padding = 30, three_d_dist=False, bbox_norm = True, dist_display_win_size = 60,  draw_all_landmarks = False, draw_landmark_nums=False, draw_anchor_target_connector=True, display_dim=800, log_level='INFO'):
-        FeatureExtractor.__init__(self, input_video, 'mp_output', initial_detect, initial_bbox_padding, 0, [269, 267, 39, 37, 181, 314], three_d_dist, bbox_norm, dist_display_win_size, draw_all_landmarks, draw_landmark_nums, draw_anchor_target_connector, display_dim, log_level)
+    def __init__(self, input_video, output_directory, initial_detect=True, initial_bbox_padding = 30, three_d_dist=False, bbox_norm = True, dist_display_win_size = 60,  draw_all_landmarks = False, draw_landmark_nums=False, draw_anchor_target_connector=True, display_dim=800, log_level='INFO'):
+        FeatureExtractor.__init__(self, input_video, output_directory, initial_detect, initial_bbox_padding, 0, [269, 267, 39, 37, 181, 314], three_d_dist, bbox_norm, dist_display_win_size, draw_all_landmarks, draw_landmark_nums, draw_anchor_target_connector, display_dim, log_level)
 
         # mediapipe extractor initialization
         logging.info('Setting up MediaPipe FaceMesh')
-        base_options = python.BaseOptions(model_asset_path='../common/face_landmarker_v2_with_blendshapes.task')
+        base_options = python.BaseOptions(model_asset_path='../common/weights/face_landmarker_v2_with_blendshapes.task')
         options = vision.FaceLandmarkerOptions(base_options=base_options,
                                             num_faces=1, 
                                              min_face_detection_confidence=.25, 
