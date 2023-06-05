@@ -2,7 +2,7 @@
 
 ## Getting started
 1. Deep learning models often have a lot of dependencies that can quickly become incompatible with each other. It’s often hard to go back and correct these incompatibilities once they’ve arisen, which can really mess up your environment. To avoid this, I’ve created a conda environment for each model. Create the conda environment containing everything needed to run MediaPipe-based feature extraction from mp_env.yml (can be found at deepfake_detection/misc)
-2. Download mobilenet0.25_Final.pth and Resnet50_Final.pth here and put in common/weights. These are the weights for the RetinaFace face detection model. 
+2. Download mobilenet0.25_Final.pth and Resnet50_Final.pth [here](https://drive.google.com/drive/folders/1oZRSG0ZegbVkVwUd8wUIQx8W7yfZ_ki1) and put in common/weights. These are the weights for the RetinaFace face detection model. 
 3. Download MediaPipe model bundle. These are the weights/configurations for the facial landmark extraction. 
 Enter common/weights and enter !wget -O face_landmarker_v2_with_blendshapes.task -q https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 
