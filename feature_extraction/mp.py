@@ -1,27 +1,23 @@
 
 import cv2
 import numpy as np
-import pickle
-import time
 import matplotlib.pyplot as plt
-
+import logging
 from feature_extractor import FeatureExtractor
-
+import mp_alignment
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
-# from mediapipe.tasks.python.vision.core.vision_task_running_mode import VisionTaskRunningMode
-#     running_mode=VisionTaskRunningMode.VIDEO,
-import mp_alignment
+
 
 class MPFeatureExtractor(FeatureExtractor):
-    def __init__(self, input_video, dist_display_win_size = 60, bbox_norm = True, draw_all_landmarks = False, draw_landmark_nums=False, draw_anchor_target_connector=True, three_d_dist_dist=False, initial_detect=True, initial_bbox_padding = 30, display_dim=800):
-        FeatureExtractor.__init__(self, input_video, 'mp_output', 0, [269, 267, 39, 37, 181, 314], dist_display_win_size, bbox_norm, draw_all_landmarks, draw_landmark_nums, draw_anchor_target_connector, three_d_dist_dist, 'mp',  initial_detect, initial_bbox_padding, display_dim)
+    def __init__(self, input_video,  initial_detect=True, initial_bbox_padding = 30, three_d_dist=False, bbox_norm = True, dist_display_win_size = 60,  draw_all_landmarks = False, draw_landmark_nums=False, draw_anchor_target_connector=True, display_dim=800, log_level='INFO'):
+        FeatureExtractor.__init__(self, input_video, 'mp_output', initial_detect, initial_bbox_padding, 0, [269, 267, 39, 37, 181, 314], three_d_dist, bbox_norm, dist_display_win_size, draw_all_landmarks, draw_landmark_nums, draw_anchor_target_connector, display_dim, log_level)
 
         # mediapipe extractor initialization
-        print('---- Setting up MediaPipe FaceMesh ----')
+        logging.info('Setting up MediaPipe FaceMesh')
         base_options = python.BaseOptions(model_asset_path='../common/face_landmarker_v2_with_blendshapes.task')
         options = vision.FaceLandmarkerOptions(base_options=base_options,
                                             num_faces=1, 
@@ -31,21 +27,31 @@ class MPFeatureExtractor(FeatureExtractor):
         #output_face_blendshapes=True,
         #output_facial_transformation_matrixes=True,
         self.extractor = vision.FaceLandmarker.create_from_options(options)
-        print('---- Done setting up MediaPipe FaceMesh ----')
+        logging.info('Done setting up MediaPipe FaceMesh')
 
     
     def extract_landmarks(self, frame):
+        """
+        Extracts facial landmarks, returning a list of 3D coordinates - one for each landmark. 
+
+        Parameters
+        ----------
+        frame : np array/cv2 frame
+            Frame to run face landmark exctraction on
+
+        Returns
+        -------
+        landmark_coords : List of 3D tuples
+            3D coordinate of each face landmark
+        """
         # frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)   
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)        
         mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
         detection_result = self.extractor.detect(mp_img)  
         face_landmarks_list = detection_result.face_landmarks
-
         if len(face_landmarks_list) == 0:
             return []
-        
         face_landmarks = face_landmarks_list[0] 
-        # scale x,y,z by image dimensions
         H, W, c = frame.shape #not the same as self.input_H, self.input_W if initial face detection (and thus cropping) is being used!
         # MediaPipe by deafult returns facial landmark coordinates normalized to 0-1 based on the input frame dimensions. Here we 
         # un-normalize to get coordinates ranging from 0-W/0_H (i.e., actual pixel coordinates)
@@ -53,15 +59,47 @@ class MPFeatureExtractor(FeatureExtractor):
         return landmark_coords
     
     def align_landmarks(self, landmark_list, W, H):
-        #again, must pass in W, H, which may not be the same as self.input_W, self.input_H
+        """
+        Align extracted landmarks in landmark_list to obtain canonical view of face landmarks
+
+        Parameters
+        ----------
+        landmark_list : List of 3D tuples
+            3D coordinate of each face landmark, as outputted by extract_landmarks
+        W, H : int
+            Dimensions, in pixels, of frame that facial landmark extraction was run on.
+            This is not same as self.input_W, self.input_H f if initial face detection (and thus cropping) is being used!
+
+        Returns
+        -------
+        landmark_coords_3d_aligned, landmark_coords_2d_aligned : List of 3D tuples, list of 2D tuples
+            3D face landmark coordinates in canonical view, and corresponding 2D coordinates, derived
+            by projecting the aligned 3D coordinates assuming zero camera rotation/translation
+        """
         landmark_coords_3d_aligned, landmark_coords_2d_aligned  = mp_alignment.align_landmarks(landmark_list, self.input_W, self.input_H, W, H)
         return landmark_coords_2d_aligned, landmark_coords_3d_aligned
     
     def track_landmarks(self, landmark_coords=None, W=None, H=None):
-        #again, must pass in W, H, which may not be the same as self.input_W, self.input_H
+        """
+        Update landmark_tracker and dist_tracker with new frame's data
 
-        #if there were no detections for this frame, add None to lists to maintain alignment of list values with frame numbers
+        Parameters
+        ----------
+        landmark_coords : List of 3D tuples, optional
+            3D coordinate of each face landmark, as outputted by extract_landmarks, to keep track of 
+        W, H : int, optional 
+            Dimensions, in pixels, of frame that facial landmark extraction was run on.
+            This is not same as self.input_W, self.input_H f if initial face detection (and thus cropping) is being used!
+        
+        If landmark_coords, W, and H = None, no landmarks were detected in this frame. We still must appropriately update
+        the trackers
+
+        Returns
+        ----------
+        None
+        """
         if landmark_coords == None:
+            #if there were no landmarks extracted for this frame, add None to lists to maintain alignment of list values with frame numbers
             for i in range(468):
                 if i not in self.landmark_tracker:
                     self.landmark_tracker[i] = [np.nan]
@@ -75,19 +113,17 @@ class MPFeatureExtractor(FeatureExtractor):
                         self.dist_tracker[i].append(np.nan)
             return
         
-        #otherwise, add appropriate coordinates and distances to landmark_tracker and dist_tracker
+        #if landmarks were extracted for this fame, add appropriate coordinates and distances to landmark_tracker and dist_tracker
         anchor_coord = landmark_coords[self.anchor_landmark]
         for i, l in enumerate(landmark_coords):
             if i not in self.landmark_tracker:
                 self.landmark_tracker[i] = [l]
             else:
                 self.landmark_tracker[i].append(l)
-
             if i in self.target_landmarks:
                 x_diff = (anchor_coord[0] - l[0]) 
                 y_diff = (anchor_coord[1] - l[1]) 
                 z_diff = (anchor_coord[2] - l[2]) 
-
                 if self.bbox_norm:
                     bbox = self.get_mp_bbox(landmark_coords, W, H)
                     #normalize all differences by face bounding box dimensions
@@ -97,20 +133,29 @@ class MPFeatureExtractor(FeatureExtractor):
                     x_diff /= bbox_W
                     y_diff /= bbox_H
                     z_diff /= bbox_D
-
                 if self.three_d_dist:
                     dist = np.sqrt(x_diff**2 + y_diff**2 + z_diff**2) 
                 else:
                     dist = np.sqrt(x_diff**2 + y_diff**2) 
-
                 if i not in self.dist_tracker:
                     self.dist_tracker[i] = [dist]
                 else:
                     self.dist_tracker[i].append(dist)
 
     def get_mp_bbox(self, landmark_coords, W, H):
-        #get face bounding box coordinates based on MediaPipe's extracted landmarks 
-        #https://github.com/google/mediapipe/issues/1737
+        """
+        Get face bounding box coordinates based on MediaPipe's extracted landmarks 
+
+        Parameters
+        ----------
+        landmark_coords : List of 3D tuples
+            3D coordinate of each face landmark, as outputted by extract_landmarks, to keep track of 
+        W, H : int
+            Dimensions, in pixels, of frame that facial landmark extraction was run on.
+            This is not same as self.input_W, self.input_H f if initial face detection (and thus cropping) is being used!
+        
+        From https://github.com/google/mediapipe/issues/1737
+        """
         cx_min=  W
         cy_min = H
         cz_min = W #z scale is roughly same as x scale, according to https://medium.com/@susanne.thierfelder/head-pose-estimation-with-mediapipe-and-opencv-in-javascript-c87980df3acb

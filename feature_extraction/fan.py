@@ -1,3 +1,7 @@
+""""
+HASN'T BEEN UPDATED TO REFLECT NEW FEATURE EXTRACTOR YET
+"""
+
 import numpy as np, face_alignment
 from video_app import VideoApp
 import fan_alignment
