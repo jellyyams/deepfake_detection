@@ -13,8 +13,41 @@ from mediapipe.framework.formats import landmark_pb2
 
 
 class MPFeatureExtractor(FeatureExtractor):
-    def __init__(self, input_video, output_directory, initial_detect=True, initial_bbox_padding = 30, three_d_dist=False, bbox_norm = True, dist_display_win_size = 60,  draw_all_landmarks = False, draw_landmark_nums=False, draw_anchor_target_connector=True, display_dim=800, log_level='INFO'):
-        FeatureExtractor.__init__(self, input_video, output_directory, initial_detect, initial_bbox_padding, 0, [269, 267, 39, 37, 181, 314], three_d_dist, bbox_norm, dist_display_win_size, draw_all_landmarks, draw_landmark_nums, draw_anchor_target_connector, display_dim, log_level)
+    def __init__(
+        self, 
+        input_video, 
+        output_directory, 
+        initial_detect=True, 
+        initial_bbox_padding = 30, 
+        three_d_dist=False, 
+        dist_display_win_size = 60,  
+        draw_all_landmarks = False, 
+        draw_landmark_nums=False, 
+        draw_anchor_target_connector=True, 
+        display_dim=800, 
+        log_level='INFO', 
+        anchor_landmark=0, 
+        target_landmarks=[269, 267, 39, 37, 181, 314], 
+        generate_video=True, 
+        norm_approach="face bbox"):
+        
+        FeatureExtractor.__init__(
+            self, 
+            input_video, 
+            output_directory, 
+            initial_detect, 
+            initial_bbox_padding, 
+            anchor_landmark, 
+            target_landmarks, 
+            three_d_dist, 
+            dist_display_win_size, 
+            draw_all_landmarks, 
+            draw_landmark_nums, 
+            draw_anchor_target_connector, 
+            display_dim, 
+            log_level, 
+            generate_video, 
+            norm_approach)
 
         # mediapipe extractor initialization
         logging.info('Setting up MediaPipe FaceMesh')
@@ -78,6 +111,71 @@ class MPFeatureExtractor(FeatureExtractor):
         """
         landmark_coords_3d_aligned, landmark_coords_2d_aligned  = mp_alignment.align_landmarks(landmark_list, self.input_W, self.input_H, W, H)
         return landmark_coords_2d_aligned, landmark_coords_3d_aligned
+
+    def get_diff(self, bbox, xdiff, ydiff, zdiff):
+        bbox_W = bbox[1][0] - bbox[0][0]
+        bbox_H = bbox[1][1] - bbox[0][1]
+        bbox_D = bbox[1][2] - bbox[0][2]
+        xdiff = xdiff / bbox_W
+        ydiff = ydiff / bbox_H
+        zdiff = zdiff / bbox_D
+
+        return xdiff, ydiff, zdiff
+
+
+    def normalize(self, xdiff, ydiff, zdiff, landmark_coords, W, H):
+        if self.norm_approach == "face_bbox": 
+            bbox = self.get_mp_bbox(landmark_coords, W, H)
+            #normalize all differences by face bounding box dimensions
+            xdiff, ydiff, zdiff = self.get_diff(bbox, xdiff, ydiff, zdiff)
+           
+        elif self.norm_approach == "region_bbox":
+            pass
+        elif self.norm_approach == "first_bbox":
+            bbox = self.first_bbox
+            if bbox[1][0] == bbox [0][0] == bbox[1][1] == bbox[0][1] == bbox[1][2] == bbox[0][2] == 0:
+                bbox = self.get_mp_bbox(landmark_coords, W, H)
+                self.first_bbox = bbox 
+
+            xdiff, ydiff, zdiff = self.get_diff(bbox, xdiff, ydiff, zdiff)
+
+        
+        return xdiff, ydiff, zdiff
+
+      
+
+    def set_landmark_dist(self, anchor_coord, landmark_coords, l, W, H, i):
+        x_diff = (anchor_coord[0] - l[0]) 
+        y_diff = (anchor_coord[1] - l[1]) 
+        z_diff = (anchor_coord[2] - l[2]) 
+
+
+        x_diff, y_diff, z_diff = self.normalize(x_diff, y_diff, z_diff, landmark_coords, W, H)
+            
+        if self.three_d_dist:
+            dist = np.sqrt(x_diff**2 + y_diff**2 + z_diff**2) 
+        else:
+            dist = np.sqrt(x_diff**2 + y_diff**2) 
+        if i not in self.dist_tracker:
+            self.dist_tracker[i] = [dist]
+        else:
+            self.dist_tracker[i].append(dist)  
+
+    def set_landmarks_none(self):
+        #if there were no landmarks extracted for this frame, add None to lists to maintain alignment of list values with frame numbers
+
+        for i in range(468):
+            if i not in self.landmark_tracker:
+                self.landmark_tracker[i] = [np.nan]
+            else:
+                self.landmark_tracker[i].append(np.nan)
+
+            if i in self.target_landmarks:
+                if i not in self.dist_tracker:
+                    self.dist_tracker[i] = [np.nan]
+                else:
+                    self.dist_tracker[i].append(np.nan)
+        
     
     def track_landmarks(self, landmark_coords=None, W=None, H=None):
         """
@@ -99,20 +197,9 @@ class MPFeatureExtractor(FeatureExtractor):
         None
         """
         if landmark_coords == None:
-            #if there were no landmarks extracted for this frame, add None to lists to maintain alignment of list values with frame numbers
-            for i in range(468):
-                if i not in self.landmark_tracker:
-                    self.landmark_tracker[i] = [np.nan]
-                else:
-                    self.landmark_tracker[i].append(np.nan)
-
-                if i in self.target_landmarks:
-                    if i not in self.dist_tracker:
-                        self.dist_tracker[i] = [np.nan]
-                    else:
-                        self.dist_tracker[i].append(np.nan)
-            return
-        
+            self.set_landmarks_none()
+            return 
+    
         #if landmarks were extracted for this fame, add appropriate coordinates and distances to landmark_tracker and dist_tracker
         anchor_coord = landmark_coords[self.anchor_landmark]
         for i, l in enumerate(landmark_coords):
@@ -121,26 +208,7 @@ class MPFeatureExtractor(FeatureExtractor):
             else:
                 self.landmark_tracker[i].append(l)
             if i in self.target_landmarks:
-                x_diff = (anchor_coord[0] - l[0]) 
-                y_diff = (anchor_coord[1] - l[1]) 
-                z_diff = (anchor_coord[2] - l[2]) 
-                if self.bbox_norm:
-                    bbox = self.get_mp_bbox(landmark_coords, W, H)
-                    #normalize all differences by face bounding box dimensions
-                    bbox_W = bbox[1][0] - bbox[0][0]
-                    bbox_H = bbox[1][1] - bbox[0][1]
-                    bbox_D = bbox[1][2] - bbox[0][2]
-                    x_diff /= bbox_W
-                    y_diff /= bbox_H
-                    z_diff /= bbox_D
-                if self.three_d_dist:
-                    dist = np.sqrt(x_diff**2 + y_diff**2 + z_diff**2) 
-                else:
-                    dist = np.sqrt(x_diff**2 + y_diff**2) 
-                if i not in self.dist_tracker:
-                    self.dist_tracker[i] = [dist]
-                else:
-                    self.dist_tracker[i].append(dist)
+                self.set_landmark_dist(anchor_coord, landmark_coords, l, W, H, i)
 
     def get_mp_bbox(self, landmark_coords, W, H):
         """
