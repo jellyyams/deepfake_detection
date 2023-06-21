@@ -1,0 +1,18 @@
+Comparing kelly_low_s1_v1 with kelly_front_s1_v1
+Normalized by first region quarters bbox
+Window size: 25
+Analysis type: landmarks_to_anchor
+
+Landmark 0 r value: -0.05819910738327705, p value: 0.517423819461012
+Landmark 17 r value: 0.17401180474436465, p value: 0.05133066836905042
+Landmark 52 r value: 0.6839212906742844, p value: 1.083339839517992e-18
+Landmark 145 r value: 0.18163605920937548, p value: 0.041800144782654786
+Landmark 159 r value: 0.6334395765474997, p value: 1.7260873711908122e-15
+Landmark 244 r value: 0.3986712903311943, p value: 3.7704515955589414e-06
+Landmark 287 r value: 0.17103479608152486, p value: 0.055510146538574646
+Landmark 374 r value: -0.44673848203306543, p value: 1.5750380599927617e-07
+Landmark 386 r value: -0.2554344420648527, p value: 0.003892840989054545
+Landmark 464 r value: 0.06377020020508745, p value: 0.4780717956613221
+
+ Median Pearson R value: 0.1725
+ Average Pearson R value: 0.1546
