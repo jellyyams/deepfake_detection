@@ -199,7 +199,7 @@ class MPFeatureExtractor(object):
         cz_min = W #z scale is roughly same as x scale, according to https://medium.com/@susanne.thierfelder/head-pose-estimation-with-mediapipe-and-opencv-in-javascript-c87980df3acb
         cx_max = cy_max = cz_max = 0
         for id, l in enumerate(landmarks):
-            lm = self.curr_frame_landmarks_3d[l]
+            lm = self.curr_frame_aligned_landmarks_3d[l]
 
             cx, cy, cz = lm
             if cx<cx_min:
@@ -271,8 +271,8 @@ class MPFeatureExtractor(object):
     
     def track_landmarks_to_anchor(self, W, H):
         #if landmarks were extracted for this fame, add appropriate coordinates and distances to landmark_tracker and dist_tracker
-        anchor_coord = self.curr_frame_landmarks_3d[self.anchor_landmark]
-        for i, l in enumerate(self.curr_frame_landmarks_3d):
+        anchor_coord = self.curr_frame_aligned_landmarks_3d[self.anchor_landmark]
+        for i, l in enumerate(self.curr_frame_aligned_landmarks_3d):
             if i not in self.landmark_coord_tracker:
                 self.landmark_coord_tracker[i] = [l]
             else:
@@ -285,32 +285,6 @@ class MPFeatureExtractor(object):
             pass
 
     
-    def track_landmarks(self, W=None, H=None):
-        """
-        Update landmark_tracker and dist_tracker with new frame's data
-
-        Parameters
-        ----------
-        landmark_coords : List of 3D tuples, optional
-            3D coordinate of each face landmark, as outputted by extract_landmarks, to keep track of 
-        W, H : int, optional 
-            Dimensions, in pixels, of frame that facial landmark extraction was run on.
-            This is not same as self.input_W, self.input_H f if initial face detection (and thus cropping) is being used!
-        
-        If landmark_coords, W, and H = None, no landmarks were detected in this frame. We still must appropriately update
-        the trackers
-
-        Returns
-        ----------
-        None
-        """
-        if self.curr_frame_landmarks_3d == None:
-            self.set_landmarks_none()
-        elif self.analysis_type == "landmark_to_anchor":
-            self.track_landmarks_to_anchor(W, H)
-        elif self.analysis_type == "landmark_pairs": 
-            self.set_landmarks_none()
-
     def crop_frame(self, frame):
         if self.curr_face_bbox == None:
             return None
@@ -324,10 +298,10 @@ class MPFeatureExtractor(object):
     
     def empty_frame(self):
         self.track_landmarks()
-        if self.generate_video:
-            self.vidgen.set_plot_frame(self.frame_num, self.target_landmarks, self.landmark_data_tracker)
-            self.vidgen.set_annotated_blank()
-            self.vidgen.set_annotated_frame(self.init_frame)
+     
+        self.vidgen.set_plot_frame(self.frame_num, self.target_landmarks, self.landmark_data_tracker)
+        self.vidgen.set_annotated_blank()
+        self.vidgen.set_annotated_frame(self.init_frame)
 
 
     def detect_landmarks(self, frame):
@@ -340,19 +314,34 @@ class MPFeatureExtractor(object):
 
         return landmark_list
     
-    def plot_and_track_landmarks(self, landmarks, frame):
-        if len(landmarks) == 0:
-            self.empty_frame() 
-        else: 
+    def track_landmarks(self, landmarks, frame):
+        if len(landmarks) != 0:
+
             H, W, c = frame.shape #use h, w defined here instead of self.input_W, self.input_H because they are not the same if initial face deteciton is being used
-            aligned_landmark_list_2d, aligned_landmark_list_3d = self.align_landmarks(landmarks, W, H)
-            self.curr_frame_landmarks_3d = aligned_landmark_list_3d
+
+            self.curr_frame_aligned_landmarks_2d, self.curr_frame_aligned_landmarks_3d = self.align_landmarks(landmarks, W, H)
+
+            if self.curr_frame_aligned_landmarks_3d == None:
+                self.set_landmarks_none()
+            else: 
+                
+                elif self.analysis_type == "landmark_to_anchor":
+                    self.track_landmarks_to_anchor(W, H)
+                elif self.analysis_type == "landmark_pairs": 
+                    self.set_landmarks_none()
             
-            self.track_landmarks(W, H)
-            if self.generate_video: 
-                self.vidgen.set_annotated_frame(self.init_frame, landmarks, self.curr_face_bbox, self.anchor_landmark, self.target_landmarks, self.landmark_data_tracker)
-                self.vidgen.set_annotated_blank(aligned_landmark_list_2d, self.target_landmarks, self.anchor_landmark, self.landmark_data_tracker)
-                self.vidgen.set_plot_frame(self.frame_num, self.target_landmarks, self.landmark_data_tracker)
+    
+    def plot_landmarks(self, frame, landmarks=None): 
+        if len(landmarks) != 0: 
+          
+            self.vidgen.set_annotated_frame(self.init_frame, landmarks, self.curr_face_bbox, self.anchor_landmark, self.target_landmarks, self.landmark_data_tracker)
+            self.vidgen.set_annotated_blank(self.curr_frame_aligned_landmarks_2d, self.target_landmarks, self.anchor_landmark, self.landmark_data_tracker)
+            self.vidgen.set_plot_frame(self.frame_num, self.target_landmarks, self.landmark_data_tracker)
+        else: 
+            self.empty_frame()
+
+
+
 
     def update_fps(self, overall_start):
         overall_end = time.time()
@@ -368,15 +357,17 @@ class MPFeatureExtractor(object):
 
             self.curr_face_bbox = self.face_detector.detect(frame)
             frame = self.crop_frame(frame)
+            landmark_list = []
 
-            if frame is None: 
-                #no face was detected in frame 
-                self.empty_frame()
-            else: 
+            if frame: 
                 landmark_list = self.detect_landmarks(frame)
-                self.plot_and_track_landmarks(landmark_list, frame)
+
+                self.track_landmarks(landmark_list, frame)
+                self.
+                
 
             if self.generate_video:
+                self.plot_landmarks(landmark_list)
                 self.vidgen.write_combined()
 
             self.update_fps(overall_start)
