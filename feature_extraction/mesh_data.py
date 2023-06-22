@@ -1,4 +1,5 @@
-    
+num_landmarks = 468
+
 class MeshData:
     def __init__(self): 
 
@@ -36,7 +37,8 @@ class MeshData:
 
             "rightEyebrowUpper" : [156, 70, 63, 105, 66, 107, 55, 193],
             "rightEyebrowLower" : [35, 124, 46, 53, 52, 65],
-            "rightEyeIris" : [473, 474, 475, 476, 477],
+            "rightEyeIris" : [],
+            # "rightEyeIris" : [473, 474, 475, 476, 477],
 
             "leftEyeUpper0" : [466, 388, 387, 386, 385, 384, 398],
             "leftEyeLower0" : [263, 249, 390, 373, 374, 380, 381, 382, 362],
@@ -48,7 +50,8 @@ class MeshData:
 
             "leftEyebrowUpper" : [383, 300, 293, 334, 296, 336, 285, 417],
             "leftEyebrowLower" : [265, 353, 276, 283, 282, 295],
-            "leftEyeIris" : [468, 469, 470, 471, 472],
+            "leftEyeIris" : [],
+            # "leftEyeIris" : [468, 469, 470, 471, 472],
 
             "topOfBridgeRight" : [122],
             "topOfBridgeLeft" : [6, 351],
@@ -82,7 +85,7 @@ class MeshData:
         }
         self.upper_keywords = ["UpperCheek", "topOf", "forehead", "Eye", "silhouetteUpper", "midway"]
         self.lower_keywords = ["lips", "LowerCheek", "chin", "Ala", "Nostril", "nose", "silhouetteLower"]
-        self.all = list(range(0,478))
+        self.all = list(range(0,num_landmarks))
 
         self.upper_landmarks = []
         self.lower_landmarks = [] 
@@ -99,21 +102,6 @@ class MeshData:
         self.separate_right_left()
         self.separate_into_quarters()
 
-        self.key_regions = self.separate_by_keywords([
-            "rightNostril", 
-            "leftNostril", 
-            "leftEyebrowUpper", 
-            "rightEyebrowUpper", 
-            "leftEyebrowLower", 
-            "rightEyebrowLower", 
-            "leftEyeIris", 
-            "rightEyeIris", 
-            "leftEyeLower0", 
-            "rightEyeLower0", 
-            "leftEyeUpper0", 
-            "rightEyeUpper0", 
-            
-        ])
 
     def combine_mouth_landmarks(self):
         for k, v in self.landmarks.items():

@@ -1,5 +1,6 @@
 from mp_extractor import MPFeatureExtractor
 from stack_vids import stack_vids
+from itertools import combinations
 import os
 import csv
 import pandas as pd
@@ -12,24 +13,18 @@ import math
 import scipy.stats as stats
 from mesh_data import MeshData
 
-initial_detect = True
-draw_all_landmarks = True
-generate_video = True
-analysis_type = "landmark_to_anchor" #vs "landmark_pairs" vs "landmark_to_anchor" vs "landmark_displacement_sig"
-anchor_landmark = 4
-target_landmarks = [0, 287, 52, 17, 244, 464, 159, 145, 386, 374]
-anchor_pairs = []
-normalize_by = "first_region_bbox" #vs "first_region_quarters_bbox" vs "face_bbox" vs "none" vs "region_bbox" vs "first_face_bbox" vs "first_region_bbox"
-analysis_type = "landmarks_to_anchor"
-root_video_path = "../../../Desktop/Deepfake_Detection/Test_Videos"
-input_vids = ["/Kelly_Front/kelly_front_s1_v1", "/Kelly_Low/kelly_low_s1_v1", "/Kelly_Threequarter/kelly_threequarter_s1_v1"]
-data_dict = {}
 
-def generate_landmark_pairs(keywords):
-    pass 
+def get_landmarks(keywords):
+    md = MeshData()
+    res = []
+    for k, v in md.landmarks.items():
+        if any(sub in k for sub in keywords): 
+            res += v
+    
+    return res
+     
 
-
-def run_extractions(video_paths): 
+def run_extractions(video_paths, draw_all_landmarks, anchor_landmark, target_landmarks, generate_video, norm_approach, analysis_type, root_video_path, initial_detect): 
     for vid_path in video_paths: 
         input_path = root_video_path + vid_path + ".mp4"
         app = MPFeatureExtractor(
@@ -39,18 +34,37 @@ def run_extractions(video_paths):
             anchor_landmark = anchor_landmark,
             target_landmarks = target_landmarks,
             generate_video=generate_video, 
-            norm_approach=normalize_by, 
+            norm_approach=norm_approach, 
             analysis_type=analysis_type)
-        extraction_data = app.run_extraction()
+        landmark_coords, landmark_data, landmark_groups = app.run_extraction()
         pathsplit = vid_path.split('/')
-        with open("./extracted_data/" + pathsplit[2] + ".csv", 'w') as f:
-            writer = csv.DictWriter(f, extraction_data.keys())
-            writer.writeheader()
-            writer.writerow(extraction_data)
+        write_data_into_csv(landmark_coords, landmark_data, landmark_groups, pathsplit[2])
 
-def read_csv_into_dict(file_paths):
+
+def write_data_into_csv(landmark_coords, landmark_data, landmark_groups, filename):
+    directory = "./landmark_analysis_data/" + filename + "/"
+
+    if not os.path.exists(directory):
+        os.makedirs(directory) 
+    
+    with open(directory + "coords" + ".csv", 'w') as f:
+        writer = csv.DictWriter(f, landmark_coords.keys())
+        writer.writeheader()
+        writer.writerow(landmark_coords)
+
+    with open(directory + "data" + ".csv", 'w') as f:
+        writer = csv.DictWriter(f, landmark_data.keys())
+        writer.writeheader()
+        writer.writerow(landmark_data)
+    
+    with open(directory + "groups" + ".csv", 'w') as f:
+        writer = csv.DictWriter(f, landmark_groups.keys())
+        writer.writeheader()
+        writer.writerow(landmark_groups)
+
+def read_csv_into_dict(file_paths, data_dict, fname):
     for f_path in file_paths:
-        full_path = "./extracted_data/" + f_path + ".csv"
+        full_path = "./correlation_reports/" + f_path + fname + ".csv"
         df = pd.read_csv(full_path, header=None)
         df = df.rename({0:"Landmark", 1:"Distances"}, axis="index")
         df = df.T
@@ -80,7 +94,7 @@ def write_analysis_report(output_dir, file_path1, file_path2, r_and_p, r_window_
         f.write ("\n\n Median Pearson R value: " + str(round(statistics.median(rvalues), 4)))
         f.write ("\n Average Pearson R value: " + str(round(s/len(r_and_p), 4)))
 
-def plot_landmarks_corr(file_path1, file_path2):
+def plot_landmarks_corr(file_path1, file_path2, data_dict):
     df_1 = data_dict[file_path1]
     df_2 = data_dict[file_path2]
 
@@ -136,10 +150,34 @@ def plot_landmarks_corr(file_path1, file_path2):
     
     write_analysis_report(output_directory, file_path1, file_path2, pearson_r_and_p, r_window_size)
 
+def main():
 
-pair_to_analyze = ["kelly_low_s1_v1", "kelly_threequarter_s1_v1"]
+    initial_detect = True
+    draw_all_landmarks = True
+    generate_video = False
+    analysis_type = "landmark_pairs" #vs "landmark_pairs" vs "landmark_to_anchor" vs "landmark_displacement_sig"
+    anchor_landmark = 4
+    # target_landmarks = [0, 287, 52, 17, 244, 464, 159, 145, 386, 374]
+    key_regions = ["Outer", "Inner", "Corner", "0", "Eyebrow"]
+    target_landmarks = get_landmarks(key_regions)
+    anchor_pairs = []
+    norm_approach = "first_upper_lower_bbox" #vs "first_quarters_bbox" vs "face_bbox" vs "none" vs "upper_lower_bbox" vs "first_face_bbox" vs "first_upper_lower_bbox"
+    root_video_path = "../../../Desktop/Deepfake_Detection/Test_Videos"
+    input_paths = ["/Kelly_Front/kelly_front_s1_v1", "/Kelly_Low/kelly_low_s1_v1", "/Kelly_Threequarter/kelly_threequarter_s1_v1"]
+    data_dict = {}
 
-run_extractions(input_vids)
-read_csv_into_dict(pair_to_analyze)
-plot_landmarks_corr(pair_to_analyze[0], pair_to_analyze[1])
+    filenames = [a.split("/")[-1] for a in input_paths]
 
+    filenames_every_pair = list(combinations(filenames, 2))
+
+    landmark_pairs = list(combinations(target_landmarks, 2))
+    print(len(target_landmarks))
+    print(len(landmark_pairs))
+    
+
+    run_extractions(input_paths, draw_all_landmarks, anchor_landmark, target_landmarks, generate_video, norm_approach, analysis_type, root_video_path, initial_detect)
+    # read_csv_into_dict(pair_to_analyze, data_dict)
+    # plot_landmarks_corr(pair_to_analyze[0], pair_to_analyze[1], data_dict)
+
+if __name__ == "__main__": 
+    main()

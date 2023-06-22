@@ -1,6 +1,8 @@
 import os 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+
 import pickle
 
 class VidGenerator:
@@ -16,8 +18,8 @@ class VidGenerator:
         self.display_dim = display_dim
         self.draw_landmark_nums = draw_landmark_nums
         self.draw_all_landmarks = draw_all_landmarks
-        self.input_W = input_H
-        self.input_H = input_W
+        self.input_W = input_W
+        self.input_H = input_H
 
         self.blank_canvas = cv2.cvtColor(np.uint8(np.ones((self.input_H, self.input_W))), cv2.COLOR_GRAY2BGR)
 
@@ -39,7 +41,8 @@ class VidGenerator:
     
     def write_combined(self):
         tup = (v for k,v in self.frames.items())
-        combined = np.hstack(tup)
+        # combined = np.hstack(tup)
+        combined = np.hstack((self.frames["annotated_vid"], self.frames["annotated_blank"], self.frames["data_plot"]))
         self.out_vid.write(combined)
 
     
@@ -51,8 +54,8 @@ class VidGenerator:
     
     def set_annotated_blank(self, aligned_landmarks = None, target_landmarks=None, anchor_num=None, data_tracker=None):
         if aligned_landmarks and target_landmarks and anchor_num and data_tracker: 
-            annotated = annotate_blank(align_landmarks, target_landmarks, data_tracker, anchor_num)
-            self.frames["annotate_blank"] = self.resize_img(annotated)
+            annotated = self.annotate_blank(aligned_landmarks, target_landmarks, data_tracker, anchor_num)
+            self.frames["annotated_blank"] = self.resize_img(annotated)
         else: 
             self.frames["annotated_blank"] = self.resize_img(self.blank_canvas.copy())
     
@@ -66,7 +69,7 @@ class VidGenerator:
 
         If initial_face_bbox = None, then initial face detection is not being run. 
         """
-        if initial_face_bbox is not None:
+        if initial_face_bbox:
             #draw face bounding box
             cv2.rectangle(frame, (initial_face_bbox[0] - self.initial_bbox_padding, initial_face_bbox[1] - self.initial_bbox_padding), (initial_face_bbox[2] + self.initial_bbox_padding, initial_face_bbox[3] + self.initial_bbox_padding), (255, 255, 0), 2)
             #incremement all landmarks according to initial_face_bbox and initial_bbox_padding values to translate to init_frame system
@@ -180,7 +183,6 @@ class VidGenerator:
             c = np.array(self.drawing_colors[t])/255
             plt.plot(dists, color=c, label=str(t))
 
-        plt.ylim(0, 1)
 
         plt.legend()
         figure = plt.gcf()

@@ -40,7 +40,7 @@ class MPFeatureExtractor(object):
         generate_video=False, 
         three_d_dist=True, 
         initial_detect=True, 
-        frames_to_include = ["annotated_blank", "data_plot", "annotated_vid"]):
+        frames_to_include = ["annotated_vid", "annotated_blank", "data_plot"]):
 
         logging.config.dictConfig(generate_logging_config('feature extractor', log_level))
 
@@ -163,6 +163,7 @@ class MPFeatureExtractor(object):
         if len(face_landmarks_list) == 0:
             return []
         face_landmarks = face_landmarks_list[0] 
+
         H, W, c = frame.shape #not the same as self.input_H, self.input_W if initial face detection (and thus cropping) is being used!
         # MediaPipe by deafult returns facial landmark coordinates normalized to 0-1 based on the input frame dimensions. Here we 
         # un-normalize to get coordinates ranging from 0-W/0_H (i.e., actual pixel coordinates)
@@ -251,6 +252,7 @@ class MPFeatureExtractor(object):
             self.landmark_data_tracker[i] = [dist]
         else:
             self.landmark_data_tracker[i].append(dist)  
+        
     
     def set_landmarks_none(self):
     #if there were no landmarks extracted for this frame, add None to lists to maintain alignment of list values with frame numbers
