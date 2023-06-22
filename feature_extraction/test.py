@@ -3,7 +3,7 @@ import sys
 sys.path.append('/home/hadleigh/deepfake_detection/common')
 from stack_vids import stack_vids
 from mesh_data import MeshData
-from mp_feature_extractor import MPFeatureExtractor
+from mp_extractor import MPFeatureExtractor
 
 # initial_detect = True
 # draw_all_landmarks = False
@@ -13,9 +13,9 @@ input_1 = '../../../Desktop/Deepfake_Detection/Test_Videos/Kelly_Front/kelly_fro
 
 app = MPFeatureExtractor(
     input_1, 
-    draw_all_landmarks=True)
+    draw_all_landmarks=True, 
+    target_landmarks=[0, 17])
     
-p1_out_name = app.get_output_video_path()
 app.run_extraction()
 
 # md = MeshData()

@@ -1,15 +1,14 @@
 import os 
 import cv2
 import numpy as np
+import pickle
 
 class VidGenerator:
 
-    def __init__(self, output_dir, filename, display_dim, input_cap_fps, frames_to_include, initial_bbox_padding, draw_landmak_nums, draw_all_landmarks):
+    def __init__(self, output_directory, filename, display_dim, input_cap_fps, frames_to_include, initial_bbox_padding, draw_landmark_nums, draw_all_landmarks, input_H, input_W):
 
         if not os.path.exists(output_directory):
             os.makedirs(output_directory) 
-
-        self.out_vid = cv2.VideoWriter(output_video_path, cv2.VideoWriter_fourcc(*'MP4V'), input_cap_fps, (display_dim*3, display_dim))
 
         self.output_path = '{}/{}.mp4'.format(output_directory, filename)
         self.frames = self.init_frames(frames_to_include)
@@ -17,14 +16,16 @@ class VidGenerator:
         self.display_dim = display_dim
         self.draw_landmark_nums = draw_landmark_nums
         self.draw_all_landmarks = draw_all_landmarks
-        self.input_w = None
-        self.input_h = None
+        self.input_W = input_H
+        self.input_H = input_W
 
         self.blank_canvas = cv2.cvtColor(np.uint8(np.ones((self.input_H, self.input_W))), cv2.COLOR_GRAY2BGR)
 
         #drawing stuff
         with open('../common/colors.pkl', 'rb') as f:
             self.drawing_colors = pickle.load(f)
+
+        self.out_vid = cv2.VideoWriter(self.output_path, cv2.VideoWriter_fourcc(*'MP4V'), input_cap_fps, (display_dim*3, display_dim))
     
     def init_frames(self, frames_to_include):
         frames = {}
@@ -49,13 +50,13 @@ class VidGenerator:
         self.frames["annotated_vid"] = self.resize_img(frame)
     
     def set_annotated_blank(self, aligned_landmarks = None, target_landmarks=None, anchor_num=None, data_tracker=None):
-        if aligned_landmarks and target_landmarks and anchor_num and data_tacker: 
+        if aligned_landmarks and target_landmarks and anchor_num and data_tracker: 
             annotated = annotate_blank(align_landmarks, target_landmarks, data_tracker, anchor_num)
             self.frames["annotate_blank"] = self.resize_img(annotated)
         else: 
             self.frames["annotated_blank"] = self.resize_img(self.blank_canvas.copy())
     
-    def set_plot_frame(self, frame_num, target_landmarks, data_tracker)
+    def set_plot_frame(self, frame_num, target_landmarks, data_tracker):
         self.frames["data_plot"] = self.plot_data(frame_num, target_landmarks, data_tracker)
     
     def annotate_frame(self, frame, landmark_list, initial_face_bbox, anchor_num, target_landmarks, data_tracker):

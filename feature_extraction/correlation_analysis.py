@@ -1,4 +1,4 @@
-from mp import MPFeatureExtractor
+from mp_extractor import MPFeatureExtractor
 from stack_vids import stack_vids
 import os
 import csv
@@ -15,14 +15,14 @@ from mesh_data import MeshData
 initial_detect = True
 draw_all_landmarks = True
 generate_video = True
-tracking = "landmark_to_anchor" #vs "landmark_pairs" vs "landmark_to_anchor" vs "landmark_displacement_sig"
+analysis_type = "landmark_to_anchor" #vs "landmark_pairs" vs "landmark_to_anchor" vs "landmark_displacement_sig"
 anchor_landmark = 4
 target_landmarks = [0, 287, 52, 17, 244, 464, 159, 145, 386, 374]
 anchor_pairs = []
 normalize_by = "first_region_bbox" #vs "first_region_quarters_bbox" vs "face_bbox" vs "none" vs "region_bbox" vs "first_face_bbox" vs "first_region_bbox"
 analysis_type = "landmarks_to_anchor"
 root_video_path = "../../../Desktop/Deepfake_Detection/Test_Videos"
-input_vids = ["/Kelly_Front/kelly_front_s2_v1", "/Kelly_Low/kelly_low_s2_v1", "/Kelly_Threequarter/kelly_threequarter_s2_v1"]
+input_vids = ["/Kelly_Front/kelly_front_s1_v1", "/Kelly_Low/kelly_low_s1_v1", "/Kelly_Threequarter/kelly_threequarter_s1_v1"]
 data_dict = {}
 
 def generate_landmark_pairs(keywords):
@@ -34,14 +34,13 @@ def run_extractions(video_paths):
         input_path = root_video_path + vid_path + ".mp4"
         app = MPFeatureExtractor(
             input_path, 
-            'mp_output_videos', 
             draw_all_landmarks=draw_all_landmarks, 
             initial_detect=initial_detect, 
             anchor_landmark = anchor_landmark,
             target_landmarks = target_landmarks,
             generate_video=generate_video, 
             norm_approach=normalize_by, 
-            tracking=tracking)
+            analysis_type=analysis_type)
         extraction_data = app.run_extraction()
         pathsplit = vid_path.split('/')
         with open("./extracted_data/" + pathsplit[2] + ".csv", 'w') as f:
@@ -138,7 +137,7 @@ def plot_landmarks_corr(file_path1, file_path2):
     write_analysis_report(output_directory, file_path1, file_path2, pearson_r_and_p, r_window_size)
 
 
-pair_to_analyze = ["kelly_low_s1_v1", "kelly_low_s2_v1"]
+pair_to_analyze = ["kelly_low_s1_v1", "kelly_threequarter_s1_v1"]
 
 run_extractions(input_vids)
 read_csv_into_dict(pair_to_analyze)
