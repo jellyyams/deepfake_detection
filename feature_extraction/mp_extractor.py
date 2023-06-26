@@ -28,7 +28,7 @@ class MPFeatureExtractor(object):
         target_landmarks,
         landmark_pairs=[], 
         norm_approach="first_upper_lower_bbox", 
-        analysis_type="landmark_to_anchor",
+        analysis_types=["landmark_to_anchor"],
         output_directory="mp_output_videos", 
         anchor_landmark=4, 
         initial_bbox_padding=30, 
@@ -55,7 +55,7 @@ class MPFeatureExtractor(object):
         self.dist_display_win_size = dist_display_win_size
         self.generate_video = generate_video
         self.norm_approach = norm_approach
-        self.analysis_type = analysis_type
+        self.analysis_types = analysis_types
 
         # initalize trackers
         self.landmark_coord_tracker = {}
@@ -107,6 +107,8 @@ class MPFeatureExtractor(object):
         self.frame_num = 0 
         self.init_frame = None
         self.curr_face_bbox = [(0,0,0), (0,0,0)]
+        self.cropped_H = 0.0
+        self.cropped_W = 0.0
         
         logging.info("Setting up MediaPipe FaceMesh")
         self.init_mediapipe()
@@ -170,8 +172,8 @@ class MPFeatureExtractor(object):
         landmark_coords = [(landmark.x * W, landmark.y * H, landmark.z) for landmark in face_landmarks] 
         return landmark_coords
 
-    def align_landmarks(self, landmarks, W, H):
-        landmark_coords_3d_aligned, landmark_coords_2d_aligned  = mp_alignment.align_landmarks(landmarks, self.input_W, self.input_H, W, H)
+    def align_landmarks(self, landmarks):
+        landmark_coords_3d_aligned, landmark_coords_2d_aligned  = mp_alignment.align_landmarks(landmarks, self.input_W, self.input_H, self.cropped_W, self.cropped_H)
         return landmark_coords_2d_aligned, landmark_coords_3d_aligned
 
     def get_diff(self, bbox, xdiff, ydiff, zdiff):
@@ -184,19 +186,19 @@ class MPFeatureExtractor(object):
 
         return xdiff, ydiff, zdiff
     
-    def get_first_bbox(self, region, W, H):
+    def get_first_bbox(self, region):
         bbox = self.bbox[region]
 
         if bbox[1][0] == bbox [0][0] == bbox[1][1] == bbox[0][1] == bbox[1][2] == bbox[0][2] == 0:
-            bbox = self.get_curr_bbox(self.landmarks[region], W, H)
+            bbox = self.get_curr_bbox(self.landmarks[region])
             self.bbox[region] = bbox 
         
         return bbox
     
-    def get_curr_bbox(self, landmarks, W, H):
-        cx_min=  W
-        cy_min = H
-        cz_min = W #z scale is roughly same as x scale, according to https://medium.com/@susanne.thierfelder/head-pose-estimation-with-mediapipe-and-opencv-in-javascript-c87980df3acb
+    def get_curr_bbox(self, landmarks):
+        cx_min=  self.cropped_W
+        cy_min = self.cropped_H
+        cz_min = self.cropped_W #z scale is roughly same as x scale, according to https://medium.com/@susanne.thierfelder/head-pose-estimation-with-mediapipe-and-opencv-in-javascript-c87980df3acb
         cx_max = cy_max = cz_max = 0
         for id, l in enumerate(landmarks):
             lm = self.curr_frame_aligned_landmarks_3d[l]
@@ -218,40 +220,40 @@ class MPFeatureExtractor(object):
         return bbox
 
 
-    def normalize(self, xdiff, ydiff, zdiff, W, H, i):
+    def normalize(self, xdiff, ydiff, zdiff, i):
         if self.norm_approach == "face_bbox": 
-            bbox = self.get_curr_bbox(self.landmarks["face"], W, H)
+            bbox = self.get_curr_bbox(self.landmarks["face"])
             #normalize all differences by face bounding box dimensions
            
         elif self.norm_approach == "first_upper_lower_bbox":
             if i in self.landmarks["upper"]:
-                bbox = self.get_first_bbox("upper", W, H)
+                bbox = self.get_first_bbox("upper")
             else:
-                bbox = self.get_first_bbox("lower", W, H)
-        elif self.norm_approach == "first_bbox":
-            bbox = self.get_first_bbox("face", W, H)
+                bbox = self.get_first_bbox("lower")
+        elif self.norm_approach == "first_face_bbox":
+            bbox = self.get_first_bbox("face")
             
         xdiff, ydiff, zdiff = self.get_diff(bbox, xdiff, ydiff, zdiff)
 
         
         return xdiff, ydiff, zdiff
 
-    def set_landmark_dist(self, anchor_coord, l, W, H, i):
-        x_diff = (anchor_coord[0] - l[0]) 
-        y_diff = (anchor_coord[1] - l[1]) 
-        z_diff = (anchor_coord[2] - l[2]) 
+    def set_landmark_dist(self, coord1, coord2, key, tracker, normlandmark):
+        x_diff = (coord1[0] - coord2[0]) 
+        y_diff = (coord1[1] - coord2[1]) 
+        z_diff = (coord1[2] - coord2[2]) 
 
 
-        x_diff, y_diff, z_diff = self.normalize(x_diff, y_diff, z_diff, W, H, i)
+        x_diff, y_diff, z_diff = self.normalize(x_diff, y_diff, z_diff, normlandmark)
             
         if self.three_d_dist:
             dist = np.sqrt(x_diff**2 + y_diff**2 + z_diff**2) 
         else:
             dist = np.sqrt(x_diff**2 + y_diff**2) 
-        if i not in self.landmark_data_tracker:
-            self.landmark_data_tracker[i] = [dist]
+        if key not in tracker:
+            tracker[key] = [dist]
         else:
-            self.landmark_data_tracker[i].append(dist)  
+            tracker[key].append(dist)  
         
     
     def set_landmarks_none(self):
@@ -269,7 +271,7 @@ class MPFeatureExtractor(object):
                 else:
                     self.landmark_data_tracker[i].append(np.nan)
     
-    def track_landmarks_to_anchor(self, W, H):
+    def track_landmark_coords(self):
         #if landmarks were extracted for this fame, add appropriate coordinates and distances to landmark_tracker and dist_tracker
         anchor_coord = self.curr_frame_aligned_landmarks_3d[self.anchor_landmark]
         for i, l in enumerate(self.curr_frame_aligned_landmarks_3d):
@@ -277,12 +279,24 @@ class MPFeatureExtractor(object):
                 self.landmark_coord_tracker[i] = [l]
             else:
                 self.landmark_coord_tracker[i].append(l)
-            if i in self.target_landmarks:
-                self.set_landmark_dist(anchor_coord, l, W, H, i)
 
-    def track_landmark_pairs(self, landmark_coords, W, H):
-        for pair in self.landmark_pairs:
-            pass
+            
+            if any(t in "landmark_to_anchor" for t in self.analysis_types) and i in self.target_landmarks:
+                self.set_landmark_dist(anchor_coord, l, i, self.landmark_data_tracker, i)
+
+
+    def track_landmark_groups(self):
+        if any(t in "landmark_pairs" for t in self.analysis_types):
+
+            for pair in self.landmark_pairs:
+                coord1 = self.curr_frame_aligned_landmarks_3d[pair[0]]
+                coord2 = self.curr_frame_aligned_landmarks_3d[pair[1]]
+                if (pair[0] in self.landmarks["upper"] and pair[1] in self.landmarks["upper"]) or (pair[0] in self.landmarks["lower"] and pair[1] in self.landmarks["lower"]):
+                    self.norm_approach = "first_upper_lower_bbox"
+                else: 
+                    self.norm_approach = "first_face_bbox"
+
+                self.set_landmark_dist(coord1, coord2, str(pair), self.landmark_group_tracker, pair[0])
 
     
     def crop_frame(self, frame):
@@ -317,21 +331,18 @@ class MPFeatureExtractor(object):
     def track_landmarks(self, landmarks, frame):
         if len(landmarks) != 0:
 
-            H, W, c = frame.shape #use h, w defined here instead of self.input_W, self.input_H because they are not the same if initial face deteciton is being used
+            self.cropped_H, self.cropped_W, c = frame.shape #use h, w defined here instead of self.input_W, self.input_H because they are not the same if initial face deteciton is being used
 
-            self.curr_frame_aligned_landmarks_2d, self.curr_frame_aligned_landmarks_3d = self.align_landmarks(landmarks, W, H)
+            self.curr_frame_aligned_landmarks_2d, self.curr_frame_aligned_landmarks_3d = self.align_landmarks(landmarks)
 
             if self.curr_frame_aligned_landmarks_3d == None:
                 self.set_landmarks_none()
-            else: 
-                
-                elif self.analysis_type == "landmark_to_anchor":
-                    self.track_landmarks_to_anchor(W, H)
-                elif self.analysis_type == "landmark_pairs": 
-                    self.set_landmarks_none()
+            else:
+                self.track_landmark_coords()
+          
             
     
-    def plot_landmarks(self, frame, landmarks=None): 
+    def plot_landmarks(self, landmarks): 
         if len(landmarks) != 0: 
           
             self.vidgen.set_annotated_frame(self.init_frame, landmarks, self.curr_face_bbox, self.anchor_landmark, self.target_landmarks, self.landmark_data_tracker)
@@ -339,8 +350,6 @@ class MPFeatureExtractor(object):
             self.vidgen.set_plot_frame(self.frame_num, self.target_landmarks, self.landmark_data_tracker)
         else: 
             self.empty_frame()
-
-
 
 
     def update_fps(self, overall_start):
@@ -359,11 +368,11 @@ class MPFeatureExtractor(object):
             frame = self.crop_frame(frame)
             landmark_list = []
 
-            if frame: 
+            if frame is not None: 
                 landmark_list = self.detect_landmarks(frame)
 
                 self.track_landmarks(landmark_list, frame)
-                self.
+                self.track_landmark_groups()
                 
 
             if self.generate_video:
