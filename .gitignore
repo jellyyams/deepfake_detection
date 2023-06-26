@@ -1,4 +1,5 @@
 *.mp4
 *.pth
 *.task
+*.csv
 __pycache__
