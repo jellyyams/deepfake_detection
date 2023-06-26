@@ -20,6 +20,8 @@
 import numpy as np
 import cv2
 
+num_landmarks = 468
+
 
 class Singleton(type):
     _instances = {}
@@ -2699,7 +2701,7 @@ def align_landmarks(face_landmarks, init_width, init_height, curr_width, curr_he
     points_idx.sort()
 
     if use_all_landmarks:
-        points_idx = list(range(0,468))
+        points_idx = list(range(0,num_landmarks))
         points_idx[0:2] = points_idx[0:2:-1]
 
      # pseudo camera internals
@@ -2724,7 +2726,7 @@ def align_landmarks(face_landmarks, init_width, init_height, curr_width, curr_he
     landmarks = landmarks.T
 
     if refine_landmarks:
-        landmarks = landmarks[:, :468]
+        landmarks = landmarks[:, :num_landmarks]
 
     metric_landmarks, pose_transform_mat = get_metric_landmarks(
         landmarks.copy(), pcf

@@ -12,6 +12,7 @@ import sys
 sys.path.append('/home/hadleigh/deepfake_detection/common')
 from logging_utils import generate_logging_config
 from retinaface import RetinaFaceDetector
+from mesh_data import MeshData 
 
 class FeatureExtractor(object):
     """
@@ -35,8 +36,6 @@ class FeatureExtractor(object):
         (in pixels) will be computed. 
     three_d_dist : bool
         Whether to compute the 3D Euclidean distance between the targets and anchors or just the 2D Euclidean distance
-    bbox_norm : bool
-        Whether to normalize target-anchor distances (in pixels) by the size of the face's bounding box
     dist_display_win_size : int
         When displaying the animated plot of target-anchor distances, a window of size dist_display_win_size will roll
         over the plot of target-anchor distances vs. time.
@@ -109,7 +108,25 @@ class FeatureExtractor(object):
         Annotate blank canvas with aligned landmarks to show canonical view of face 
     """
    
-    def __init__(self, input_video, output_directory, initial_detect, initial_bbox_padding, anchor_landmark, target_landmarks, three_d_dist, bbox_norm, dist_display_win_size, draw_all_landmarks, draw_landmark_nums, draw_anchor_target_connector, display_dim, log_level):
+    def __init__(
+        self, 
+        input_video, 
+        output_directory, 
+        initial_detect, 
+        initial_bbox_padding, 
+        anchor_landmark, 
+        target_landmarks, 
+        three_d_dist, 
+        dist_display_win_size, 
+        draw_all_landmarks, 
+        draw_landmark_nums, 
+        draw_anchor_target_connector, 
+        display_dim, 
+        log_level, 
+        generate_video, 
+        norm_approach, 
+        tracking
+        ):
         """
         Constructs all necessary attributes for the FeatureExtractor object.
 
@@ -131,13 +148,16 @@ class FeatureExtractor(object):
         self.initial_bbox_padding = initial_bbox_padding
         self.anchor_landmark = anchor_landmark
         self.target_landmarks = target_landmarks
+        self.landmark_pairs = landmark_pairs
         self.three_d_dist = three_d_dist
-        self.bbox_norm = bbox_norm
         self.draw_all_landmarks = draw_all_landmarks
         self.draw_landmark_nums = draw_landmark_nums
         self.draw_anchor_target_connector = draw_anchor_target_connector
         self.dist_display_win_size = dist_display_win_size
         self.display_dim = display_dim
+        self.generate_video = generate_video
+        self.norm_approach = norm_approach
+        self.tracking = tracking
 
         # initialize trackers
         self.landmark_tracker = {}
@@ -149,6 +169,26 @@ class FeatureExtractor(object):
         self.tot_overall_time = 0
         self.curr_overall_fps = 0
         self.tot_frames = 0
+
+        self.bbox = {
+            "upper":[(0,0,0), (0,0,0)], 
+            "lower": [(0,0,0), (0,0,0)], 
+            "upper_right": [(0,0,0), (0,0,0)], 
+            "lower_right": [(0,0,0), (0,0,0)],
+            "lower_left": [(0,0,0), (0,0,0)], 
+            "upper_left": [(0,0,0), (0,0,0)],  
+            "face": [(0,0,0), (0,0,0)]
+        }
+        self.mesh_data = MeshData()
+        self.landmarks = {
+            "upper": self.mesh_data.upper_landmarks, 
+            "lower": self.mesh_data.lower_landmarks, 
+            "upper_left": self.mesh_data.upper_left_landmarks,
+            "upper_right": self.mesh_data.upper_right_landmarks,
+            "lower_left": self.mesh_data.lower_left_landmarks,
+            "lower_right": self.mesh_data.lower_right_landmarks,
+            "face": self.mesh_data.all
+        }
 
         #set up initial face detector, if using
         if self.initial_detect == True:
@@ -176,8 +216,9 @@ class FeatureExtractor(object):
         else:
             self.output_video_path = '{}/{}.mp4'.format(output_directory, input_vid_name)
         input_cap_fps = int(self.input_capture.get(cv2.CAP_PROP_FPS))
-        self.out_vid = cv2.VideoWriter(self.output_video_path, cv2.VideoWriter_fourcc(*'MP4V'), input_cap_fps, (self.display_dim*3, self.display_dim))
-        logging.info('Set up output video at {}'.format(self.output_video_path))
+        if generate_video: 
+            self.out_vid = cv2.VideoWriter(self.output_video_path, cv2.VideoWriter_fourcc(*'MP4V'), input_cap_fps, (self.display_dim*3, self.display_dim))
+            logging.info('Set up output video at {}'.format(self.output_video_path))
 
         #drawing stuff
         self.blank_canvas = cv2.cvtColor(np.uint8(np.ones((self.input_H, self.input_W))), cv2.COLOR_GRAY2BGR)
@@ -201,13 +242,21 @@ class FeatureExtractor(object):
         Update landmark_tracker and dist_tracker with new frame's data
         """
         raise NotImplementedError("Method track_landmarks() must be implemented in child class.")
-    
-    def get_output_video_path(self):
-        """
-        Return path to generated output video 
-        """
-        return self.output_video_path
-    
+
+
+
+    def get_frame(self, initial_face_bbox, frame):
+        if initial_face_bbox == None:
+            return None
+        else:
+            # get crop of frame to pass to facial landmark extraction
+            bottom = max(initial_face_bbox[1] - self.initial_bbox_padding, 0)
+            top = min(initial_face_bbox[3]+1+ self.initial_bbox_padding, self.input_H)
+            left = max( initial_face_bbox[0]-self.initial_bbox_padding, 0)
+            right = min(initial_face_bbox[2]+1+self.initial_bbox_padding, self.input_W)
+            return frame[bottom:top,left:right]
+
+
     def run_extraction(self):
         """
         Perform feature extraction on each frame, managing tracker updates, output video generation, etc. 
@@ -223,27 +272,17 @@ class FeatureExtractor(object):
                     frame_num += 1
                     #make copy of initial frame fetched from input video, before potentially cropping
                     init_frame = frame.copy() 
-                    if self.initial_detect:
-                        #run initial face detection
-                        initial_face_bbox = self.face_detector.detect(frame)
-                        if initial_face_bbox == None:
-                            frame = None
-                        else:
-                            # get crop of frame to pass to facial landmark extraction
-                            bottom = max(initial_face_bbox[1] - self.initial_bbox_padding, 0)
-                            top = min(initial_face_bbox[3]+1+ self.initial_bbox_padding, self.input_H)
-                            left = max( initial_face_bbox[0]-self.initial_bbox_padding, 0)
-                            right = min(initial_face_bbox[2]+1+self.initial_bbox_padding, self.input_W)
-                            frame = frame[bottom:top,left:right]
-                    else:
-                        initial_face_bbox = None
+                    #run initial face detection
+                    initial_face_bbox = self.face_detector.detect(frame)
+                    frame = self.get_frame(initial_face_bbox, frame)
+        
 
                     if frame is None: 
                         #if no face was detected with initial detection, write unannotated/blank frame to output video
                         annotated_frame = self.resize_img(init_frame)
                         annotated_blank = self.resize_img(self.blank_canvas.copy())
                         self.track_landmarks() #must be called before plot_dists, because plot_dists uses the tracker variables
-                        dist_plot = self.plot_dists(frame_num)
+                        if self.generate_video: dist_plot = self.plot_dists(frame_num)
                     else:
                         #run facial landmark detection 
                         start = time.time()
@@ -258,7 +297,7 @@ class FeatureExtractor(object):
                             annotated_frame = self.resize_img(init_frame)
                             annotated_blank = self.resize_img(self.blank_canvas.copy())
                             self.track_landmarks()
-                            dist_plot = self.plot_dists(frame_num)
+                            if self.generate_video: dist_plot = self.plot_dists(frame_num)
                         else:
                             H, W, c = frame.shape #use h, w defined here instead of self.input_W, self.input_H because they are not the same if initial face deteciton is being used
                             aligned_landmark_list_2d, aligned_landmark_list_3d = self.align_landmarks(landmark_list, W, H)
@@ -269,13 +308,15 @@ class FeatureExtractor(object):
                             # aligned_landmark_list_3d and aligned_landmark_list_2d would be scaling, since aligned_landmark_list_2d are derived by projecting
                             # aligned_landmark_list_3D with a camera matrix of zero translation/rotation and fixed depth...
                             self.track_landmarks(aligned_landmark_list_3d, W, H)
-                            annotated_frame = self.resize_img(self.annotate_frame(init_frame, landmark_list, initial_face_bbox))
-                            annotated_blank =  self.resize_img(self.annotate_blank(aligned_landmark_list_2d))
-                            dist_plot = self.plot_dists(frame_num)
+                            if self.generate_video: 
+                                annotated_frame = self.resize_img(self.annotate_frame(init_frame, landmark_list, initial_face_bbox))
+                                annotated_blank =  self.resize_img(self.annotate_blank(aligned_landmark_list_2d))
+                                dist_plot = self.plot_dists(frame_num)
                     
-                    #write frame to output video
-                    combined = np.hstack((annotated_frame, annotated_blank, dist_plot))       
-                    self.out_vid.write(combined)
+                    if self.generate_video: 
+                        #write frame to output video
+                        combined = np.hstack((annotated_frame, annotated_blank, dist_plot))       
+                        self.out_vid.write(combined)
 
                     #update overall fps
                     overall_end = time.time()
@@ -288,8 +329,11 @@ class FeatureExtractor(object):
         print('Average extraction FPS: ', self.curr_landmark_ext_fps)
         print('Average overall FPS: ', self.curr_overall_fps)
         
-        self.input_capture.release()
-        self.out_vid.release()
+        if self.generate_video:
+            self.input_capture.release()
+            self.out_vid.release()
+
+        return self.dist_tracker
          
     def plot_dists(self, frame_num):
         """
@@ -299,17 +343,18 @@ class FeatureExtractor(object):
         for t in self.target_landmarks:
             dists = self.dist_tracker[t]
             c = np.array(self.drawing_colors[t])/255
-            plt.plot(dists, color=c)
+            plt.plot(dists, color=c, label=str(t))
+           
 
         if frame_num < self.dist_display_win_size:
             plt.xlim(0, self.dist_display_win_size)
         else:
-            plt.xlim(frame_num - int(self.dist_display_win_size/2), frame_num + int(self.dist_display_win_size/2))
+            plt.xlim(0, frame_num + int(self.dist_display_win_size/2))
 
-        if self.bbox_norm:
+        if self.norm_approach == "face bbox":
             plt.ylim(0, 1)
 
-
+        plt.legend()
         figure = plt.gcf()
         # set output figure size in pixels
         # https://stackoverflow.com/questions/332289/how-do-i-change-the-size-of-figures-drawn-with-matplotlib/4306340#4306340
@@ -319,6 +364,7 @@ class FeatureExtractor(object):
         fig_img = np.array(figure.canvas.buffer_rgba())
         fig_img = cv2.cvtColor(fig_img, cv2.COLOR_RGBA2BGR)
         plt.clf()
+        
         return fig_img
 
 
@@ -349,7 +395,8 @@ class FeatureExtractor(object):
             if i == self.anchor_landmark:
                 color = (255, 255, 255)
             elif i in self.target_landmarks:
-                color = self.drawing_colors[i]
+                color = self.drawing_colors[i][::-1]
+
                 if self.draw_anchor_target_connector:
                     frame = cv2.line(frame, (x, y), anchor, color, 1)
                     d = self.dist_tracker[i][-1]
@@ -379,7 +426,7 @@ class FeatureExtractor(object):
             if i == self.anchor_landmark:
                 color = (255, 255, 255)
             elif i in self.target_landmarks:
-                color = self.drawing_colors[i]
+                color = self.drawing_colors[i][::-1]
                 if self.draw_anchor_target_connector:
                     blank = cv2.line(blank, (x, y), anchor, color, 1)
                     d = self.dist_tracker[i][-1]
@@ -393,7 +440,7 @@ class FeatureExtractor(object):
     
     def resize_img(self, img):
         """
-        Helper function to resize inputted img to be self.display_dim x self.displa_dim pixels
+        Helper function to resize inputted img to be self.display_dim x self.display_dim pixels
         
         From https://stackoverflow.com/questions/57233910/resizing-and-padding-image-with-specific-height-and-width-in-python-opencv-gives
         """
