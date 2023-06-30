@@ -62,8 +62,8 @@ def reconstruct_vid(input_video_path, evm_data_dir, auth_data_dir, log_level='IN
         ret, main_frame = main_input_video_cap.read()
         if ret:
             frame_num += 1
-            if frame_num == main_video_len - 10:
-                break
+            # if frame_num == main_video_len - 10: #uncomment if using Matlab EVM
+            #     break
             for i, l_num in enumerate(target_landmarks):
                 #read frame form appropriate evm-d target region video
                 _, target_region_frame = evm_video_caps[i].read()

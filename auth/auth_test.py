@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 import pickle
@@ -11,7 +10,7 @@ from datetime import datetime
 import sys 
 import logging
 import logging.config
-sys.path.append('/home/hadleigh/df_pipeline/common')
+sys.path.append('/home/hadleigh/deepfake_detection/common')
 from retinaface import RetinaFaceDetector
 from tqdm import tqdm
 from vis_channels_realtime import channel_visualizer
@@ -76,19 +75,24 @@ class VideoAuthApp(object):
             logging.error('Directory {} already exists.'.format(self.output_dir))
 
         self.tot_input_vid_frames = int(self.input_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        print('Tot input video frames: ', self.tot_input_vid_frames)
         input_cap_fps = int(self.input_capture.get(cv2.CAP_PROP_FPS))
         logging.info('Setting up output videos')
         output_vid_name = '{}/main_output_video.mp4'.format(self.output_dir)
-        self.out_vid = cv2.VideoWriter(output_vid_name, cv2.VideoWriter_fourcc(*'MP4V'), input_cap_fps, (self.W, self.H))
+        self.out_vid = cv2.VideoWriter(output_vid_name, cv2.VideoWriter_fourcc(*'mp4v'), input_cap_fps, (self.W, self.H))
         
         #create output video for each of target regions
-        self.target_out_vids = []
+        self.target_out_vids_rgba = []
+        self.target_out_vids_mp4 = []
         target_out_vid_names = []
         for l_num in self.target_landmarks:
-            target_out_vid_name = '{}/target_region{}.mp4'.format(self.output_dir, l_num)
-            target_out_vid_names.append(target_out_vid_name)
-            target_out_vid = cv2.VideoWriter(target_out_vid_name, cv2.VideoWriter_fourcc(*'hvc1'), input_cap_fps, (self.pattern_out_width, self.pattern_out_width))
-            self.target_out_vids.append(target_out_vid)
+            target_out_vid_name_rgba = '{}/target_region{}.avi'.format(self.output_dir, l_num)
+            target_out_vid_name_mp4 = '{}/target_region{}.mp4'.format(self.output_dir, l_num)
+            target_out_vid_names.append(target_out_vid_name_rgba)
+            target_out_vid_rgba = cv2.VideoWriter(target_out_vid_name_rgba, cv2.VideoWriter_fourcc(*'RGBA'), input_cap_fps, (self.pattern_out_width, self.pattern_out_width))
+            self.target_out_vids_rgba.append(target_out_vid_rgba)
+            target_out_vid_mp4 = cv2.VideoWriter(target_out_vid_name_mp4, cv2.VideoWriter_fourcc(*'mp4v'), input_cap_fps, (self.pattern_out_width, self.pattern_out_width))
+            self.target_out_vids_mp4.append(target_out_vid_mp4)
        
         logging.info('Done setting up output videos')
         
@@ -128,19 +132,43 @@ class VideoAuthApp(object):
         """
         with tqdm(total=self.tot_input_vid_frames) as pbar:
             pbar.set_description('Running authentication')
-            i = 0
+            frame_num = 0
             while self.input_capture.isOpened():
                 ret, frame = self.input_capture.read()
                 if ret:
-                    i += 1
-                    self.process_frame(frame, i)  
+                    frame_num += 1
+                    frameId = int(self.input_capture.get(1)) # get current frame ID
+                    if frameId != frame_num:
+                        print('wut ', frame_num, frameId)
+                    init_frame = frame.copy()
+                    if self.initial_detect:
+                        #run initial face detection
+                        initial_face_bbox = self.initial_detector.detect(frame)
+                        if initial_face_bbox == None:
+                            frame = None
+                        else:
+                            bottom = max(initial_face_bbox[1] - self.crop_padding, 0)
+                            top = min(initial_face_bbox[3]+1+ self.crop_padding, self.H)
+                            left = max( initial_face_bbox[0]-self.crop_padding, 0)
+                            right = min(initial_face_bbox[2]+1+self.crop_padding, self.W)
+                            frame = frame[bottom:top,left:right]
+                    else:
+                        initial_face_bbox = None
+
+                    self.out_data_dict['frames']['frame' + str(frame_num)] = {'initial_detection_made':True}
+                    landmark_list = self.detect(frame) 
+                    self.extract_target_regions(init_frame, landmark_list, frame_num, initial_face_bbox)
+                    annotated_frame = self.annotate(init_frame, landmark_list, initial_face_bbox)
+                    self.out_vid.write(annotated_frame)
                 else:
                     break
                 pbar.update(1)
         
         self.input_capture.release()
         self.out_vid.release()
-        for vid in self.target_out_vids:
+        for vid in self.target_out_vids_rgba:
+            vid.release()
+        for vid in self.target_out_vids_mp4:
             vid.release()
         
         if self.track_channels:
@@ -153,28 +181,6 @@ class VideoAuthApp(object):
         
     def detect(self, frame):
         raise NotImplementedError("Method detect() must be implemented in child class.")
-
-    def process_frame(self, frame, frame_num):
-        init_frame = frame.copy()
-        if self.initial_detect:
-            #run initial face detection
-            initial_face_bbox = self.initial_detector.detect(frame)
-            if initial_face_bbox == None:
-                frame = None
-            else:
-                bottom = max(initial_face_bbox[1] - self.crop_padding, 0)
-                top = min(initial_face_bbox[3]+1+ self.crop_padding, self.H)
-                left = max( initial_face_bbox[0]-self.crop_padding, 0)
-                right = min(initial_face_bbox[2]+1+self.crop_padding, self.W)
-                frame = frame[bottom:top,left:right]
-        else:
-            initial_face_bbox = None
-
-        self.out_data_dict['frames']['frame' + str(frame_num)] = {'initial_detection_made':True}
-        landmark_list = self.detect(frame)  
-        self.extract_target_regions(init_frame, landmark_list, frame_num, initial_face_bbox)
-        annotated_frame = self.annotate(init_frame, landmark_list, initial_face_bbox)
-        self.out_vid.write(annotated_frame)
       
     def extract_target_regions(self, frame, landmark_list, frame_num, initial_face_bbox=None):
         if initial_face_bbox is not None:       
@@ -188,26 +194,38 @@ class VideoAuthApp(object):
         #extract target regions, writing region as frame to appropriate output video
         self.out_data_dict['frames']['frame' + str(frame_num)]['target_landmark_coords'] = {}
         self.out_data_dict['frames']['frame' + str(frame_num)]['mean_channel_values'] = {}
-        for i, l_num in enumerate(self.target_landmarks):
-            x, y  = init_landmark_list[l_num]   
-
-            #normalize by initial_face_bbox size
-            # initial_face_bbox_dims = (initial_face_bbox[2] - initial_face_bbox[0], initial_face_bbox[3] - initial_face_bbox[1])
-            # norm_pattern_width = (self.pattern_rel_width * max(initial_face_bbox_dims))
-            left = int(max(0, x - (self.pattern_out_width/2)))
-            top = int(max(0, y - (self.pattern_out_width/2)))
-            right = int(min(self.W, x + (self.pattern_out_width/2)))
-            bottom = int(min(self.H, y + (self.pattern_out_width/2)))
-            target_region = frame[top:bottom, left:right, :]
-            #now need to resize target_region so it is correct dimensions
-            # resized_target_region = cv2.resize(target_region, dsize=(self.pattern_out_width, self.pattern_out_width), interpolation=cv2.INTER_LINEAR)
-            # self.target_out_vids[i].write(resized_target_region)
-            self.out_data_dict['frames']['frame' + str(frame_num)]['target_landmark_coords'][l_num] = (x, y)
-            self.target_out_vids[i].write(target_region)
-            if self.track_channels:
-                b_data, g_data, r_data = self.target_channel_apps[i].add_frame_data(target_region)
-                self.out_data_dict['frames']['frame' + str(frame_num)]['mean_channel_values'][l_num] = {'b':b_data, 'g':g_data, 'r':r_data}
-            
+        if len(init_landmark_list) == 0:
+            print('f ', frame_num)
+            for i, l_num in enumerate(self.target_landmarks):
+                #add dummy values
+                self.out_data_dict['frames']['frame' + str(frame_num)]['target_landmark_coords'][l_num] = None
+                blank_region = np.zeros_like(frame)
+                self.target_out_vids_rgba[i].write(blank_region)
+                self.target_out_vids_mp4[i].write(blank_region)
+                if self.track_channels:
+                    b_data, g_data, r_data = self.target_channel_apps[i].add_frame_data(blank_region)
+                    self.out_data_dict['frames']['frame' + str(frame_num)]['mean_channel_values'][l_num] = {'b':b_data, 'g':g_data, 'r':r_data}
+        else:
+            for i, l_num in enumerate(self.target_landmarks):
+                x, y  = init_landmark_list[l_num]   
+                #normalize by initial_face_bbox size
+                # initial_face_bbox_dims = (initial_face_bbox[2] - initial_face_bbox[0], initial_face_bbox[3] - initial_face_bbox[1])
+                # norm_pattern_width = (self.pattern_rel_width * max(initial_face_bbox_dims))
+                left = int(max(0, x - (self.pattern_out_width/2)))
+                top = int(max(0, y - (self.pattern_out_width/2)))
+                right = int(min(self.W, x + (self.pattern_out_width/2)))
+                bottom = int(min(self.H, y + (self.pattern_out_width/2)))
+                target_region = frame[top:bottom, left:right, :]
+                #now need to resize target_region so it is correct dimensions
+                # resized_target_region = cv2.resize(target_region, dsize=(self.pattern_out_width, self.pattern_out_width), interpolation=cv2.INTER_LINEAR)
+                # self.target_out_vids[i].write(resized_target_region)
+                self.out_data_dict['frames']['frame' + str(frame_num)]['target_landmark_coords'][l_num] = (x, y)
+                self.target_out_vids_rgba[i].write(target_region)
+                self.target_out_vids_mp4[i].write(target_region)
+                if self.track_channels:
+                    b_data, g_data, r_data = self.target_channel_apps[i].add_frame_data(target_region)
+                    self.out_data_dict['frames']['frame' + str(frame_num)]['mean_channel_values'][l_num] = {'b':b_data, 'g':g_data, 'r':r_data}
+                
     def annotate(self, frame, landmark_list, initial_face_bbox=None):
         if initial_face_bbox is not None:       
             #incremement all landmarks according to initial_face_bbox and crop_padding values to translate to init_frame system
@@ -227,7 +245,9 @@ class VideoAuthApp(object):
         #     cv2.rectangle(shapes, box_start, box_end, (255, 255, 0), 2) #add transparent box around landmark in shapes overlay
         # mask = shapes.astype(bool)
         # out[mask] = cv2.addWeighted(frame, alpha, shapes, 1 - alpha, 0)[mask]
-
+        if len(init_landmark_list) == 0:
+            return frame
+        
         color = (0, 255, 0)
         for l_num in self.target_landmarks:
             x, y  = init_landmark_list[l_num]  
@@ -237,6 +257,7 @@ class VideoAuthApp(object):
             box_end = (int(min(self.W, x + (self.pattern_out_width/2))), int(min(self.H, y + (self.pattern_out_width/2))))
             cv2.rectangle(frame, box_start, box_end, color, 2) #draw box around target region
             cv2.circle(frame, (int(x), int(y)), 2, color=color, thickness=-1) #draw landmark in center of target region
+            cv2.putText(frame, str(l_num), (int(x) + 15, int(y) + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
         return frame
 
             

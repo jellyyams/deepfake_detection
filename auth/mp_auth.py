@@ -22,7 +22,7 @@ class MPAuthApp(VideoAuthApp):
 
         # mediapipe detector initialization
         logging.info('Setting up MediaPipe FaceMesh')
-        base_options = python.BaseOptions(model_asset_path='/home/hadleigh/df_pipeline/common/face_landmarker_v2_with_blendshapes.task')
+        base_options = python.BaseOptions(model_asset_path='/home/hadleigh/deepfake_detection/common/weights/face_landmarker_v2_with_blendshapes.task')
         options = vision.FaceLandmarkerOptions(base_options=base_options,
                                             num_faces=1, 
                                              min_face_detection_confidence=.25, 

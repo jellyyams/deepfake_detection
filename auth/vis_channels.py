@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 class channel_visualizer():
-    def __init__(self, input_video_path, outpath, win_size=60,  plot_W = 640, plot_H = 480):
+    def __init__(self, input_video_path, outpath, colorspace = 'yiq', win_size=60,  plot_W = 640, plot_H = 480):
         self.win_size = win_size
         self.plot_W = plot_W
         self.plot_H =  plot_H
@@ -21,15 +21,25 @@ class channel_visualizer():
         else:
             raise ValueError("Invalid input video")
         
-        self.r = []
-        self.g = []
-        self.b = []
+        self.chan1 = []
+        self.chan2 = []
+        self.chan3 = []
+
+        if colorspace == 'yiq':
+            self.chan1_name = 'Y'
+            self.chan2_name = 'I'
+            self.chan3_name = 'Q'
+            print('YIQ analysis')
+        elif colorspace == 'bgr':
+            self.chan1_name = 'B'
+            self.chan2_name = 'G'
+            self.chan3_name = 'R'
 
         self.frame_num = 0
 
         print('---- Setting up output video ----')
         input_vid_name = 'mp_' + input_video_path.split('/')[-1][:-4]
-        self.out_vid = cv2.VideoWriter(f'{outpath}{input_vid_name}_channel_vis.mp4', cv2.VideoWriter_fourcc(*'MP4V'), input_cap_fps, (self.plot_W, self.plot_H * 3))
+        self.out_vid = cv2.VideoWriter(f'{outpath}{input_vid_name}_channel_vis.avi', cv2.VideoWriter_fourcc(*'mp4v'), input_cap_fps, (self.plot_W, self.plot_H * 3))
         print('---- Done setting up output video ----')
         
         
@@ -43,13 +53,15 @@ class channel_visualizer():
                 ret, frame = self.input_capture.read()
                 if ret:
                     self.frame_num += 1
-                    self.b.append(np.mean(frame[:, :, 0]))
-                    self.g.append(np.mean(frame[:, :, 1]))
-                    self.r.append(np.mean(frame[:, :, 2]))
-                    b_plot = self.plot_dists('b')
-                    g_plot = self.plot_dists('g')
-                    r_plot = self.plot_dists('r')
-                    combined_plot = np.vstack((b_plot, g_plot, r_plot))
+                    if self.chan1_name == 'Y':
+                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
+                    self.chan1.append(np.mean(frame[:, :, 0]))
+                    self.chan2.append(np.mean(frame[:, :, 1]))
+                    self.chan3.append(np.mean(frame[:, :, 2]))
+                    chan1_plot = self.plot_dists('chan1')
+                    chan2_plot = self.plot_dists('chan2')
+                    chan3_plot = self.plot_dists('chan3')
+                    combined_plot = np.vstack((chan1_plot, chan2_plot, chan3_plot))
                     self.out_vid.write(combined_plot)
 
                 else:
@@ -63,12 +75,15 @@ class channel_visualizer():
         """
         generate frame showing trend of channel values
         """
-        if channel == 'b':
-            plt.plot(self.b, color='b')
-        elif channel == 'g':
-            plt.plot(self.g, color='g')
+        if channel == 'chan1':
+            plt.title(self.chan1_name)
+            plt.plot(self.chan1)
+        elif channel == 'chan2':
+            plt.title(self.chan2_name)
+            plt.plot(self.chan2)
         else:
-            plt.plot(self.r, color='r')
+            plt.title(self.chan3_name)
+            plt.plot(self.chan3)
 
         if self.frame_num < self.win_size:
             plt.xlim(0, self.win_size)
