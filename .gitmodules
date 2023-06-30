@@ -1,0 +1,3 @@
+[submodule "auth/Eulerian-Video-Magnification"]
+	path = auth/Eulerian-Video-Magnification
+	url = https://github.com/Hadleigh-Schwartz/Eulerian-Video-Magnification
