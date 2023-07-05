@@ -62,8 +62,8 @@ def draw_landmark_pairs(target_landmark_pairs, output_name = 'annotated_mp_sampl
     cv2.line(annotated_image, (int(p1_x), int(p1_y)), (int(p2_x), int(p2_y)), color, 1)
   cv2.imwrite(output_name, annotated_image)
 
-draw_landmark_pairs([(98, 321), (78, 146), (98, 318), (181, 191), (91, 185), 
-               (269, 375), (0, 375), (37, 375), (40, 84), (37, 321)],
+draw_landmark_pairs([(13, 321), (375, 409), (311, 375), (312, 321), (312, 375), 
+               (270, 321), (311, 321), (310, 405), (13, 405), (270, 375), (81, 181), (311, 314)],
                output_name='annotated_mp_sample1.jpg')
 draw_landmark_pairs([(78, 146), (40, 84), (98, 402), (0, 375), (91, 185), 
                (37, 375), (181, 191), (98, 318), (98, 321), (269, 375), (267, 375)], 
