@@ -54,7 +54,7 @@ def reconstruct_vid(input_video_path, evm_data_dir, auth_data_dir, log_level='IN
 
     # out_vid_name = 'reconstructed_output/reconstructed_{}.mp4'.format(auth_data_dir.split('/')[-1])
     out_vid_name = '{}reconstructed.mp4'.format(evm_data_dir)
-    out_vid = cv2.VideoWriter(out_vid_name, cv2.VideoWriter_fourcc(*'MP4V'), input_cap_fps, (W, H))
+    out_vid = cv2.VideoWriter(out_vid_name, cv2.VideoWriter_fourcc(*'mp4v'), input_cap_fps, (W, H))
     logging.info('Reconstructed video being written to {}'.format(out_vid_name))
 
     frame_num = 0 

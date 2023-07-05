@@ -19,7 +19,7 @@ from vis_channels_realtime import channel_visualizer
 
 class VideoAuthApp(object):
    
-    def __init__(self, input_video, initial_detect, crop_padding, target_landmarks, pattern_rel_width, pattern_out_width, track_channels, log_level):
+    def __init__(self, input_video, initial_detect, crop_padding, target_landmarks, pattern_rel_width, pattern_out_width, track_channels, colorspace, blur, log_level):
         LOGGING_CONFIG = { 
             'version':1,
             'disable_existing_loggers': True,
@@ -50,36 +50,47 @@ class VideoAuthApp(object):
         logging.config.dictConfig(LOGGING_CONFIG)
 
         self.track_channels = track_channels
+        self.colorspace = colorspace
+        self.blur = blur
         self.initial_detect = initial_detect
         self.crop_padding = crop_padding
         self.pattern_rel_width = pattern_rel_width
         self.pattern_out_width = pattern_out_width
         self.target_landmarks = target_landmarks
-  
+
+        if not os.path.exists(input_video):
+            logging.error(f'Input video path {input_video} is not valid.')
+            raise ValueError(f'Input video path {input_video} is not valid.')
+        
         try:
             self.input_capture = cv2.VideoCapture(input_video)
         except:
-            raise ValueError('Input video path %s not valid' % input_video)
+            logging.error(f'Input video path {input_video} is not valid.')
+            raise ValueError(f'Input video path {input_video} is not valid.')
         
         if self.input_capture is not None:    
             self.W , self.H = int(self.input_capture.get(3)), int(self.input_capture.get(4)) #input video dimensions
         else:
-            raise ValueError("Invalid input video")
+            logging.error(f'Input video path {input_video} is not valid.')
+            raise ValueError(f'Input video path {input_video} is not valid.')
         
-      
-        self.output_dir = 'auth_test_output/{}'.format(input_video.split('/')[-1][:-4])
-        try:
-            os.makedirs(self.output_dir, exist_ok = True)
-            logging.info('Directory {} created successfully'.format(self.output_dir))
-        except OSError as error:
-            logging.error('Directory {} already exists.'.format(self.output_dir))
-
+        input_vid_name = input_video.split('/')[-1][:-4]
+        self.output_dir = f'auth_test_output/{input_vid_name}_target{self.pattern_out_width}'
+        if os.path.exists(self.output_dir):
+            inp = input(f'The directory {self.output_dir} exists. Enter y to overwrite it, or n to terminate video authentication. : ')
+            if inp != 'y':
+                logging.info(f'Terminating processing. The directory {self.output_dir} will not be overwritten.')
+                raise ValueError(f'Terminating processing. The directory {self.output_dir} will not be overwritten.')
+    
+        os.makedirs(self.output_dir, exist_ok = True)
+        logging.info('Directory {} created successfully'.format(self.output_dir))
+    
         self.tot_input_vid_frames = int(self.input_capture.get(cv2.CAP_PROP_FRAME_COUNT))
         print('Tot input video frames: ', self.tot_input_vid_frames)
         input_cap_fps = int(self.input_capture.get(cv2.CAP_PROP_FPS))
         logging.info('Setting up output videos')
-        output_vid_name = '{}/main_output_video.mp4'.format(self.output_dir)
-        self.out_vid = cv2.VideoWriter(output_vid_name, cv2.VideoWriter_fourcc(*'mp4v'), input_cap_fps, (self.W, self.H))
+        output_vid_name = '{}/main_output_video.avi'.format(self.output_dir)
+        self.out_vid = cv2.VideoWriter(output_vid_name, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), input_cap_fps, (self.W, self.H))
         
         #create output video for each of target regions
         self.target_out_vids_rgba = []
@@ -87,11 +98,11 @@ class VideoAuthApp(object):
         target_out_vid_names = []
         for l_num in self.target_landmarks:
             target_out_vid_name_rgba = '{}/target_region{}.avi'.format(self.output_dir, l_num)
-            target_out_vid_name_mp4 = '{}/target_region{}.mp4'.format(self.output_dir, l_num)
+            target_out_vid_name_mp4 = '{}/target_region_mjpeg{}.avi'.format(self.output_dir, l_num)
             target_out_vid_names.append(target_out_vid_name_rgba)
             target_out_vid_rgba = cv2.VideoWriter(target_out_vid_name_rgba, cv2.VideoWriter_fourcc(*'RGBA'), input_cap_fps, (self.pattern_out_width, self.pattern_out_width))
             self.target_out_vids_rgba.append(target_out_vid_rgba)
-            target_out_vid_mp4 = cv2.VideoWriter(target_out_vid_name_mp4, cv2.VideoWriter_fourcc(*'mp4v'), input_cap_fps, (self.pattern_out_width, self.pattern_out_width))
+            target_out_vid_mp4 = cv2.VideoWriter(target_out_vid_name_mp4, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), input_cap_fps, (self.pattern_out_width, self.pattern_out_width))
             self.target_out_vids_mp4.append(target_out_vid_mp4)
        
         logging.info('Done setting up output videos')
@@ -107,7 +118,7 @@ class VideoAuthApp(object):
             self.target_channel_apps = []
             for target_lm in target_landmarks:
                 target_chanel_out_vid_name = '{}/target_region{}_channel_vis.mp4'.format(self.output_dir, target_lm)
-                channel_app = channel_visualizer(target_chanel_out_vid_name, fps=input_cap_fps)
+                channel_app = channel_visualizer(target_chanel_out_vid_name, fps=input_cap_fps, colorspace=self.colorspace)
                 self.target_channel_apps.append(channel_app)
     
         #create output dict to store important metadata and write initial overall metadata
@@ -220,6 +231,11 @@ class VideoAuthApp(object):
                 # resized_target_region = cv2.resize(target_region, dsize=(self.pattern_out_width, self.pattern_out_width), interpolation=cv2.INTER_LINEAR)
                 # self.target_out_vids[i].write(resized_target_region)
                 self.out_data_dict['frames']['frame' + str(frame_num)]['target_landmark_coords'][l_num] = (x, y)
+                
+                if self.blur != None:
+                    kernel_size = (self.blur, self.blur)
+                    target_region = cv2.blur(target_region, kernel_size)
+
                 self.target_out_vids_rgba[i].write(target_region)
                 self.target_out_vids_mp4[i].write(target_region)
                 if self.track_channels:
