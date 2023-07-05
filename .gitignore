@@ -1,5 +1,8 @@
 *.mp4
 *.pth
+*.avi
+*.pkl
+*.json
 *.task
 *.csv
-__pycache__
+*__pycache__

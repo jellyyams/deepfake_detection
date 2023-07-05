@@ -17,12 +17,12 @@ from mediapipe.framework.formats import landmark_pb2
 
 class MPAuthApp(VideoAuthApp):
    
-    def __init__(self, input_video, initial_detect=True, crop_padding=30, target_landmarks=[50, 280, 109, 338], pattern_rel_width=.2, pattern_out_width=20, track_channels = False, log_level='INFO'):
-        VideoAuthApp.__init__(self, input_video, initial_detect, crop_padding, target_landmarks, pattern_rel_width, pattern_out_width, track_channels, log_level)
+    def __init__(self, input_video, initial_detect=True, crop_padding=30, target_landmarks=[50, 280, 109, 338], pattern_rel_width=.2, pattern_out_width=20, track_channels = False, colorspace='ycrbr', blur = None, log_level='INFO'):
+        VideoAuthApp.__init__(self, input_video, initial_detect, crop_padding, target_landmarks, pattern_rel_width, pattern_out_width, track_channels, colorspace, blur, log_level)
 
         # mediapipe detector initialization
         logging.info('Setting up MediaPipe FaceMesh')
-        base_options = python.BaseOptions(model_asset_path='/home/hadleigh/df_pipeline/common/face_landmarker_v2_with_blendshapes.task')
+        base_options = python.BaseOptions(model_asset_path='/home/hadleigh/deepfake_detection/common/weights/face_landmarker_v2_with_blendshapes.task')
         options = vision.FaceLandmarkerOptions(base_options=base_options,
                                             num_faces=1, 
                                              min_face_detection_confidence=.25, 
