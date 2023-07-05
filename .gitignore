@@ -2,6 +2,7 @@
 *.pth
 *.avi
 *.pkl
+*.json
 *.task
 *.csv
 __pycache__
