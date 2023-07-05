@@ -1,0 +1,7 @@
+Comparing the following files: 
+kelly_front_s5_v1/groups,  kelly_low_s5_v1/groups,  kelly_threequarter_s5_v1/groups,  
+
+Correlation cuttoff is 0.8
+landmark(s),  kelly_front_s5_v1groups_vs_kelly_low_s5_v1groups,  kelly_front_s5_v1groups_vs_kelly_threequarter_s5_v1groups,  kelly_low_s5_v1groups_vs_kelly_threequarter_s5_v1groups,  average
+(327, 402),     0.7279,       0.85073,       0.82714,       0.80192
+(318, 327),     0.73052,       0.84842,       0.8239,       0.80095
