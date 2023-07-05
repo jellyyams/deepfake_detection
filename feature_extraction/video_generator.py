@@ -7,11 +7,12 @@ import pickle
 
 class VidGenerator:
 
-    def __init__(self, output_directory, filename, display_dim, input_cap_fps, frames_to_include, initial_bbox_padding, draw_landmark_nums, draw_all_landmarks, input_H, input_W):
+    def __init__(self, output_directory, filename, display_dim, input_cap_fps, frames_to_include, initial_bbox_padding, draw_landmark_nums, draw_all_landmarks, input_H, input_W, dist_display_win_size=60):
 
         if not os.path.exists(output_directory):
             os.makedirs(output_directory) 
-
+        
+        self.dist_display_win_size = dist_display_win_size
         self.output_path = '{}/{}.mp4'.format(output_directory, filename)
         self.frames = self.init_frames(frames_to_include)
         self.initial_bbox_padding = initial_bbox_padding
@@ -42,7 +43,8 @@ class VidGenerator:
     def write_combined(self):
         tup = (v for k,v in self.frames.items())
         # combined = np.hstack(tup)
-        combined = np.hstack((self.frames["annotated_vid"], self.frames["annotated_blank"], self.frames["data_plot"]))
+        # combined = np.hstack((self.frames["annotated_vid"], self.frames["annotated_blank"], self.frames["anchor_plot"]))
+        combined = np.hstack((self.frames["annotated_vid"], self.frames["annotated_blank"], self.frames["pair_plot"]))
         self.out_vid.write(combined)
 
     
@@ -60,7 +62,11 @@ class VidGenerator:
             self.frames["annotated_blank"] = self.resize_img(self.blank_canvas.copy())
     
     def set_plot_frame(self, frame_num, target_landmarks, data_tracker):
-        self.frames["data_plot"] = self.plot_data(frame_num, target_landmarks, data_tracker)
+        self.frames["anchor_plot"] = self.plot_data(frame_num, target_landmarks, data_tracker)
+
+    def set_plot_pairs_frame(self, frame_num, target_pairs, pair_tracker):
+        self.frames["pair_plot"] = self.plot_data(frame_num, target_pairs, pair_tracker)
+
     
     def annotate_frame(self, frame, landmark_list, initial_face_bbox, anchor_num, target_landmarks, data_tracker):
         """
@@ -180,8 +186,20 @@ class VidGenerator:
 
         for t in target_landmarks:
             dists = data_tracker[t]
-            c = np.array(self.drawing_colors[t])/255
+            if "(" in str(t): 
+                a = int(t[0])
+                b = int(t[1])
+                color = a
+
+            else:
+                color = t
+            c = np.array(self.drawing_colors[color])/255
             plt.plot(dists, color=c, label=str(t))
+
+        if frame_num < self.dist_display_win_size: 
+            plt.xlim(0, self.dist_display_win_size)
+        else: 
+            plt.xlim(frame_num - int(self.dist_display_win_size/2), frame_num + int(self.dist_display_win_size/2))
 
 
         plt.legend()

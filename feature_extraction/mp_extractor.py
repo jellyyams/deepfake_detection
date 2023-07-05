@@ -27,6 +27,7 @@ class MPFeatureExtractor(object):
         input_video, 
         target_landmarks,
         landmark_pairs=[], 
+        target_pairs=[],
         norm_approach="first_upper_lower_bbox", 
         analysis_types=["landmark_to_anchor"],
         output_directory="mp_output_videos", 
@@ -56,6 +57,7 @@ class MPFeatureExtractor(object):
         self.generate_video = generate_video
         self.norm_approach = norm_approach
         self.analysis_types = analysis_types
+        self.target_pairs = target_pairs
 
         # initalize trackers
         self.landmark_coord_tracker = {}
@@ -143,6 +145,9 @@ class MPFeatureExtractor(object):
         else:
             raise ValueError("Invalid input video")
     
+    def get_output_video_path(self):
+        return self.vidgen.output_path
+
     def extract_landmarks(self, frame):
         """
         Extracts facial landmarks, returning a list of 3D coordinates - one for each landmark. 
@@ -296,7 +301,7 @@ class MPFeatureExtractor(object):
                 else: 
                     self.norm_approach = "first_face_bbox"
 
-                self.set_landmark_dist(coord1, coord2, str(pair), self.landmark_group_tracker, pair[0])
+                self.set_landmark_dist(coord1, coord2, pair, self.landmark_group_tracker, pair[0])
 
     
     def crop_frame(self, frame):
@@ -347,7 +352,8 @@ class MPFeatureExtractor(object):
           
             self.vidgen.set_annotated_frame(self.init_frame, landmarks, self.curr_face_bbox, self.anchor_landmark, self.target_landmarks, self.landmark_data_tracker)
             self.vidgen.set_annotated_blank(self.curr_frame_aligned_landmarks_2d, self.target_landmarks, self.anchor_landmark, self.landmark_data_tracker)
-            self.vidgen.set_plot_frame(self.frame_num, self.target_landmarks, self.landmark_data_tracker)
+            # self.vidgen.set_plot_frame(self.frame_num, self.target_landmarks, self.landmark_data_tracker)
+            self.vidgen.set_plot_pairs_frame(self.frame_num, self.target_pairs, self.landmark_group_tracker)
         else: 
             self.empty_frame()
 

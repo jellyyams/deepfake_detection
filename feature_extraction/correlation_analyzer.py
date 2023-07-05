@@ -6,12 +6,14 @@ import os
 import scipy.stats as stats
 # from importlib.metadata import version
 # import dataframe_image as dfi  
+# from sklearn import preprocessing
 
 
 class CorrAnalyzer: 
-    def __init__(self, files, analysis, makeplots, data, output_dir_root, most_similar, top_num, r_window_size=25): 
+    def __init__(self, files, analysis, makeplots, data, output_dir_root, file_extension, most_similar, cutoff, min_max_scale=True,  r_window_size=25): 
         self.most_similar = most_similar
-        self.top_num = top_num
+        self.file_extension = file_extension
+        self.cutoff = cutoff
         self.files = files
         self.data = data
         self.analysis = analysis
@@ -20,57 +22,57 @@ class CorrAnalyzer:
         self.makeplots = makeplots 
         self.results = {}
         self.results_avg = {}
+        self.results_avg_list = []
         self.r_window_size = r_window_size
-        self.final_results = {}
+        self.bounded_results = {}
+        self.best_landmarks = []
+        self.min_max_scale = min_max_scale
 
-        self.full_paths = self.set_full_paths()
-        self.pairs = list(combinations(self.full_paths, 2))
+        self.pairs = list(combinations(self.files, 2))
 
     def init_output_dir(self):
 
         if not os.path.exists(self.output_dir_root):
             os.makedirs(self.output_dir_root)
-    
-
-    def set_full_paths(self):
-        full_paths = []
-        for path in self.files: 
-            for a in self.analysis: 
-                full_paths.append(path+a)
-        
-        return full_paths
-
-    def sort_landmark(self, pair):
-        pair_list = pair.replace("(","").replace(" ", "").replace(")", "").split(",")
-        smaller = min(int(pair_list[0]), int(pair_list[1]))
-        larger = max(int(pair_list[0]), int(pair_list[1]))
-
-        return (smaller, larger)
 
 
     def find_single_corr(self, row1, row2, file_path1, file_path2):
+
         if len(row1["Distances"]) > len(row2["Distances"]):
-            row1["Distances"] = row1["Distances"][:len(row2["Distances"])]
+            cropped_dist1 = row1["Distances"][:len(row2["Distances"])]
+            cropped_norm1 = row1["Normalized"][:len(row2["Normalized"])]
+            cropped_dist2 = row2["Distances"]
+            cropped_norm2 = row2["Normalized"]
         else:
-            row2["Distances"] = row2["Distances"][:len(row1["Distances"])]
+            cropped_dist2 = row2["Distances"][:len(row1["Distances"])]
+            cropped_norm2 = row2["Normalized"][:len(row1["Normalized"])]
+            cropped_dist1 = row1["Distances"]
+            cropped_norm1 = row1["Normalized"]
+
+        if self.min_max_scale: 
+            row1_data = cropped_norm1
+            row2_data = cropped_norm2
+        else: 
+            row1_data = cropped_dist1
+            row2_data = cropped_dist2
+
         
 
-        df = pd.DataFrame(data = {file_path1 : row1["Distances"], file_path2: row2["Distances"]})
+        df = pd.DataFrame(data = {file_path1 : row1_data, file_path2: row2_data})
 
-        r_and_p = str(stats.pearsonr(row1["Distances"], row2["Distances"]))
+        r_and_p = str(stats.pearsonr(row1_data, row2_data))
 
         r_and_p_l = r_and_p.replace("PearsonRResult(statistic=","").replace(" pvalue=","").replace(")","").split(",")
 
         res_key = file_path1 + "_vs_" + file_path2
         res_key = res_key.replace("/","")
-        key = self.sort_landmark(row1["Landmark"])
+        key = row1["Landmark_key"]
 
 
         if key in self.results:
             self.results[key][res_key] = round(float(r_and_p_l[0]), 5)
         else:
             self.results[key] = {res_key : round(float(r_and_p_l[0]), 5)}
-
 
 
         if self.makeplots:
@@ -88,13 +90,13 @@ class CorrAnalyzer:
             
             plt.suptitle("Distance data and rolling window correlation \n" + 
                 "landmark number: " + 
-                row1["Landmark"] + 
+                row1["Landmark_key"] + 
                 ", rolling window: " + 
                 str(r_window_size) + 
                 " frames, Pearson value: " + 
                 str(round(float(r_and_p_l[0]), 5)))
 
-            plt.savefig(output_directory + "_landmark_" + row1["Landmark"])
+            plt.savefig(output_directory + "_landmark_" + row1["Landmark_key"])
 
 
     def find_corr_between_pairs(self, file_path1, file_path2):
@@ -113,10 +115,10 @@ class CorrAnalyzer:
             self.find_corr_between_pairs(pair[0], pair[1])
         
         self.get_avg()
-        self.write_analysis_report(self.top_num)
+        self.write_analysis_report()
         print("done")
         
-        return self.results
+        return self.bounded_results
 
     def get_avg(self):
         for k, v in self.results.items():
@@ -125,47 +127,41 @@ class CorrAnalyzer:
             self.results_avg[k] = round(s/l, 5)
 
 
-    def write_analysis_report(self, top):
+    def write_analysis_report(self):
         #create final dataframe that can be displayed 
         #rows: each landmark pair 
         #columns: each comparison pair and final avg 
 
-        self.results_avg = sorted(self.results_avg.items(), key=lambda x:x[1], reverse=self.most_similar)
-        with open(self.output_dir_root + "report.txt", 'w') as f:
+        self.results_avg_list = sorted(self.results_avg.items(), key=lambda x:x[1], reverse=self.most_similar)
+        with open(self.output_dir_root + self.file_extension + "_report.txt", 'w') as f:
             f.write("Comparing the following files: \n")
-            for fil in self.full_paths:
+            for fil in self.files:
                 f.write(fil)
                 f.write(",  ")
             
-            f.write("\n\nTop " + str(top) + " correlations: ") 
+            f.write("\n\nCorrelation cuttoff is " + str(self.cutoff)) 
             f.write("\nlandmark(s),  ")
-            for k, v in self.results[self.results_avg[0][0]].items():
+            for k, v in self.results[self.results_avg_list[0][0]].items():
                 f.write(k + ",  ")
             f.write("average")
 
-            for i in range(top):
+            for i in range(len(self.results_avg_list)):
 
-                avg = self.results_avg[i]
-                f.write("\n" + str(avg[0]) + ",  ")
+                avg = self.results_avg_list[i]
+                if avg[1] > self.cutoff and not self.most_similar: 
+                    break
+                elif avg[1] < self.cutoff and self.most_similar: 
+                    break 
 
-                if "landmark(s)" in self.final_results:
-                    self.final_results["landmark(s)"].append(avg[0])
-                else:
-                    self.final_results["landmark(s)"] = [avg[0]]
+                f.write("\n" + str(avg[0]) + ",     ")
 
                 for k, v in self.results[avg[0]].items():
-                    f.write(str(v) + ",  ")
-                    if k in self.final_results:
-                        self.final_results[k].append(v)
-                    else:
-                        self.final_results[k] = [v]
+                    f.write(str(v) + ",       ")
 
-                f.write(str(avg[1]) + ",  ")
+                f.write(str(avg[1]))
                 
-                if "average" in self.final_results:
-                    self.final_results["average"].append(avg[1])
-                else:
-                    self.final_results["average"] = [avg[1]]
+
+                self.bounded_results[avg[0]] = avg[1]
 
                 
 
