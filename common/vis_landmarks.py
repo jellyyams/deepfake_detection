@@ -62,9 +62,17 @@ def draw_landmark_pairs(target_landmark_pairs, output_name = 'annotated_mp_sampl
     cv2.line(annotated_image, (int(p1_x), int(p1_y)), (int(p2_x), int(p2_y)), color, 1)
   cv2.imwrite(output_name, annotated_image)
 
-draw_landmark_pairs([(98, 321), (78, 146), (98, 318), (181, 191), (91, 185), 
-               (269, 375), (0, 375), (37, 375), (40, 84), (37, 321)],
-               output_name='annotated_mp_sample1.jpg')
-draw_landmark_pairs([(78, 146), (40, 84), (98, 402), (0, 375), (91, 185), 
-               (37, 375), (181, 191), (98, 318), (98, 321), (269, 375), (267, 375)], 
-               output_name='annotated_mp_sample2.jpg')
+# draw_landmark_pairs([(98, 321), (78, 146), (98, 318), (181, 191), (91, 185), 
+#                (269, 375), (0, 375), (37, 375), (40, 84), (37, 321)],
+#                output_name='annotated_mp_sample1.jpg')
+# draw_landmark_pairs([(78, 146), (40, 84), (98, 402), (0, 375), (91, 185), 
+#                (37, 375), (181, 191), (98, 318), (98, 321), (269, 375), (267, 375)], 
+#                output_name='annotated_mp_sample2.jpg')
+
+draw_landmark_pairs([(296, 386), (25, 159), (287, 327), (62, 160), (327, 386), 
+               (292, 327), (336, 385), (62, 159), (98, 292), (296, 387), (24, 159), (291, 327), (61, 160), (107, 160),
+               (255, 257), (98, 287), (327, 387), (336, 384), (258, 327), (76, 160)], 
+               output_name='annotated_mp_eyenosecornerlandmarks_intersect.jpg')
+
+draw_landmark_pairs([(296, 385), (334, 386), (296, 386), (334, 387), (283, 387), (282, 386), (334, 387), (293, 387), (282, 387), (293, 388), (334, 388), (283, 386)], 
+               output_name='annotated_mp_eyelandmarks_sim.jpg')

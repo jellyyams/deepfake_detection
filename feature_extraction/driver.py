@@ -217,11 +217,11 @@ def main():
 
     initial_detect = True
     draw_all_landmarks = True
-    generate_video = True
+    generate_video = False
     analysis_types = ["landmark_pairs", "landmark_to_anchor"] #vs "landmark_pairs" vs "landmark_to_anchor" vs "landmark_displacement_sig"
     anchor_landmark = 57
     # target_landmarks = [57, 0, 267, 269, 270, 409, 306, 292, 37, 308, 291]
-    key_regions = ["Outer", "Inner", "Corner", "0", "Eyebrow"]
+    key_regions = ["1", "0", "Eyebrow"]
     target_landmarks = get_landmarks(key_regions)
     target_pairs = [
         (13, 321), 
@@ -244,34 +244,66 @@ def main():
         "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s31_v2", 
         "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s31_v2",
         "/Hadleigh_Front/hadleigh_front_s31_v2", 
-        # "/Hadleigh_Low/hadleigh_low_s32_v2",
-        # "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s32_v2", 
-        # "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s32_v2",
-        # "/Hadleigh_Front/hadleigh_front_s32_v2", 
-        # "/Hadleigh_Low/hadleigh_low_s27_v2",
-        # "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s27_v2", 
-        # "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s27_v2",
-        # "/Hadleigh_Front/hadleigh_front_s27_v2", 
-        # "/Hadleigh_Low/hadleigh_low_s28_v2",
-        # "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s28_v2", 
-        # "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s28_v2",
-        # "/Hadleigh_Front/hadleigh_front_s28_v2", 
+        "/Hadleigh_Low/hadleigh_low_s32_v2",
+        "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s32_v2", 
+        "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s32_v2",
+        "/Hadleigh_Front/hadleigh_front_s32_v2", 
+        "/Hadleigh_Low/hadleigh_low_s27_v2",
+        "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s27_v2", 
+        "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s27_v2",
+        "/Hadleigh_Front/hadleigh_front_s27_v2", 
+        "/Hadleigh_Low/hadleigh_low_s28_v2",
+        "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s28_v2", 
+        "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s28_v2",
+        "/Hadleigh_Front/hadleigh_front_s28_v2", 
         "/Kelly_Low/kelly_low_s31_v2",
         "/Kelly_Right_Threequarter/kelly_right_threequarter_s31_v2", 
         "/Kelly_Left_Threequarter/kelly_left_threequarter_s31_v2",
         "/Kelly_Front/kelly_front_s31_v2", 
-        # "/Kelly_Low/kelly_low_s32_v2",
-        # "/Kelly_Right_Threequarter/kelly_right_threequarter_s32_v2", 
-        # "/Kelly_Left_Threequarter/kelly_left_threequarter_s32_v2",
-        # "/Kelly_Front/kelly_front_s32_v2", 
-        # "/Kelly_Low/kelly_low_s27_v2",
-        # "/Kelly_Right_Threequarter/kelly_right_threequarter_s27_v2", 
-        # "/Kelly_Left_Threequarter/kelly_left_threequarter_s27_v2",
-        # "/Kelly_Front/kelly_front_s27_v2", 
-        # "/Kelly_Low/kelly_low_s28_v2",
-        # "/Kelly_Right_Threequarter/kelly_right_threequarter_s28_v2", 
-        # "/Kelly_Left_Threequarter/kelly_left_threequarter_s28_v2",
-        # "/Kelly_Front/kelly_front_s28_v2", 
+        "/Kelly_Low/kelly_low_s32_v2",
+        "/Kelly_Right_Threequarter/kelly_right_threequarter_s32_v2", 
+        "/Kelly_Left_Threequarter/kelly_left_threequarter_s32_v2",
+        "/Kelly_Front/kelly_front_s32_v2", 
+        "/Kelly_Low/kelly_low_s27_v2",
+        "/Kelly_Right_Threequarter/kelly_right_threequarter_s27_v2", 
+        "/Kelly_Left_Threequarter/kelly_left_threequarter_s27_v2",
+        "/Kelly_Front/kelly_front_s27_v2", 
+        "/Kelly_Low/kelly_low_s28_v2",
+        "/Kelly_Right_Threequarter/kelly_right_threequarter_s28_v2", 
+        "/Kelly_Left_Threequarter/kelly_left_threequarter_s28_v2",
+        "/Kelly_Front/kelly_front_s28_v2", 
+        "/Hadleigh_Low/hadleigh_low_s1_v2",
+        "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s1_v2", 
+        "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s1_v2",
+        "/Hadleigh_Front/hadleigh_front_s1_v2", 
+        "/Hadleigh_Low/hadleigh_low_s2_v2",
+        "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s2_v2", 
+        "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s2_v2",
+        "/Hadleigh_Front/hadleigh_front_s2_v2", 
+        "/Hadleigh_Low/hadleigh_low_s3_v2",
+        "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s3_v2", 
+        "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s3_v2",
+        "/Hadleigh_Front/hadleigh_front_s3_v2", 
+        "/Hadleigh_Low/hadleigh_low_s4_v2",
+        "/Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s4_v2", 
+        "/Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s4_v2",
+        "/Hadleigh_Front/hadleigh_front_s4_v2", 
+        "/Kelly_Low/kelly_low_s1_v2",
+        "/Kelly_Right_Threequarter/kelly_right_threequarter_s1_v2", 
+        "/Kelly_Left_Threequarter/kelly_left_threequarter_s1_v2",
+        "/Kelly_Front/kelly_front_s1_v2", 
+        "/Kelly_Low/kelly_low_s2_v2",
+        "/Kelly_Right_Threequarter/kelly_right_threequarter_s2_v2", 
+        "/Kelly_Left_Threequarter/kelly_left_threequarter_s2_v2",
+        "/Kelly_Front/kelly_front_s2_v2", 
+        "/Kelly_Low/kelly_low_s3_v2",
+        "/Kelly_Right_Threequarter/kelly_right_threequarter_s3_v2", 
+        "/Kelly_Left_Threequarter/kelly_left_threequarter_s3_v2",
+        "/Kelly_Front/kelly_front_s3_v2", 
+        "/Kelly_Low/kelly_low_s4_v2",
+        "/Kelly_Right_Threequarter/kelly_right_threequarter_s4_v2", 
+        "/Kelly_Left_Threequarter/kelly_left_threequarter_s4_v2",
+        "/Kelly_Front/kelly_front_s4_v2", 
         ]
 
     filenames = [a.split("/")[-1] for a in input_paths]
@@ -318,10 +350,10 @@ def main():
 
     top_num = 150
 
-    # best_sim_list, best_sim_pairs, sorted_sim_avg, sim_total_count, sim_total_score = find_sim_landmark_pairs(look_for_sim, ["groups"], top_cutoff=-1, top_num=top_num)
-    # best_diff_list, best_diff_pairs, sorted_diff_avg, diff_total_count, diff_total_score = find_diff_landmark_pairs(look_for_diff, ["groups"], bottom_cutoff=1, top_num=2000)
-    # find_top_diff_from_sim(best_sim_list, best_diff_pairs, top_num)
-    # find_intersection(best_sim_list, best_diff_list, sim_total_score, diff_total_score, sim_total_count, diff_total_count)
+    best_sim_list, best_sim_pairs, sorted_sim_avg, sim_total_count, sim_total_score = find_sim_landmark_pairs(look_for_sim, ["groups"], top_cutoff=-1, top_num=top_num)
+    best_diff_list, best_diff_pairs, sorted_diff_avg, diff_total_count, diff_total_score = find_diff_landmark_pairs(look_for_diff, ["groups"], bottom_cutoff=1, top_num=2000)
+    find_top_diff_from_sim(best_sim_list, best_diff_pairs, top_num)
+    find_intersection(best_sim_list, best_diff_list, sim_total_score, diff_total_score, sim_total_count, diff_total_count)
 
     vid_names = [
         "kelly_front_s31_v2/", 
@@ -331,7 +363,7 @@ def main():
         "hadleigh_right_threequarter_s31_v2/" 
     ]
 
-    make_plots(target_pairs, vid_names)
+    #make_plots(target_pairs, vid_names)
 
     
     
