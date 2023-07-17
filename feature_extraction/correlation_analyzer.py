@@ -10,7 +10,7 @@ import scipy.stats as stats
 
 
 class CorrAnalyzer: 
-    def __init__(self, files, analysis, makeplots, data, output_dir_root, file_extension, most_similar, cutoff, min_max_scale=True,  r_window_size=25): 
+    def __init__(self, files, analysis, makeplots, data, output_dir_root, file_extension, most_similar, cutoff, processed=True,  r_window_size=25): 
         self.most_similar = most_similar
         self.file_extension = file_extension
         self.cutoff = cutoff
@@ -26,9 +26,9 @@ class CorrAnalyzer:
         self.r_window_size = r_window_size
         self.bounded_results = {}
         self.best_landmarks = []
-        self.min_max_scale = min_max_scale
+        self.processed = processed
 
-        self.pairs = list(combinations(self.files, 2))
+        self.filepairs = list(combinations(self.files, 2))
 
     def init_output_dir(self):
 
@@ -40,18 +40,18 @@ class CorrAnalyzer:
 
         if len(row1["Distances"]) > len(row2["Distances"]):
             cropped_dist1 = row1["Distances"][:len(row2["Distances"])]
-            cropped_norm1 = row1["Normalized"][:len(row2["Normalized"])]
+            cropped_processed1 = row1["Processed"][:len(row2["Processed"])]
             cropped_dist2 = row2["Distances"]
-            cropped_norm2 = row2["Normalized"]
+            cropped_processed2 = row2["Processed"]
         else:
             cropped_dist2 = row2["Distances"][:len(row1["Distances"])]
-            cropped_norm2 = row2["Normalized"][:len(row1["Normalized"])]
+            cropped_processed2 = row2["Processed"][:len(row1["Processed"])]
             cropped_dist1 = row1["Distances"]
-            cropped_norm1 = row1["Normalized"]
+            cropped_processed1 = row1["Processed"]
 
-        if self.min_max_scale: 
-            row1_data = cropped_norm1
-            row2_data = cropped_norm2
+        if self.processed: 
+            row1_data = cropped_processed1
+            row2_data = cropped_processed2
         else: 
             row1_data = cropped_dist1
             row2_data = cropped_dist2
@@ -99,20 +99,20 @@ class CorrAnalyzer:
             plt.savefig(output_directory + "_landmark_" + row1["Landmark_key"])
 
 
-    def find_corr_between_pairs(self, file_path1, file_path2):
+    def find_corr_between_filepairs(self, file_path1, file_path2):
         df_1 = self.data[file_path1]
         df_2 = self.data[file_path2]    
         
         for index, row in df_1.iterrows():
-            self.find_single_corr(row, df_2.iloc[index], file_path1, file_path2)
+            self.find_single_corr(row, df_2.loc[index], file_path1, file_path2)
         
         # write_analysis_report(output_directory, file_path1, file_path2, pearson_r_and_p, r_window_size)
 
     
     def compare_data(self): 
 
-        for pair in self.pairs: 
-            self.find_corr_between_pairs(pair[0], pair[1])
+        for pair in self.filepairs: 
+            self.find_corr_between_filepairs(pair[0], pair[1])
         
         self.get_avg()
         self.write_analysis_report()
