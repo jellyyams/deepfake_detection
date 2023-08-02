@@ -4,13 +4,10 @@ import matplotlib.pylab as plt
 from itertools import combinations
 import os
 import scipy.stats as stats
-# from importlib.metadata import version
-# import dataframe_image as dfi  
-# from sklearn import preprocessing
 
 
 class CorrAnalyzer: 
-    def __init__(self, files, analysis, makeplots, data, output_dir_root, file_extension, most_similar, cutoff, min_max_scale=True,  r_window_size=25): 
+    def __init__(self, files, analysis, makeplots, data, output_dir_root, file_extension, most_similar, cutoff, processed=True,  r_window_size=25): 
         self.most_similar = most_similar
         self.file_extension = file_extension
         self.cutoff = cutoff
@@ -26,9 +23,19 @@ class CorrAnalyzer:
         self.r_window_size = r_window_size
         self.bounded_results = {}
         self.best_landmarks = []
-        self.min_max_scale = min_max_scale
+        self.processed = processed
 
-        self.pairs = list(combinations(self.files, 2))
+        self.filepairs = list(combinations(self.files, 2))
+
+    def process_signal(self, raw, processtype): 
+        normed = self.signalP.min_max_norm(raw)
+        if processtype == "moving_average": 
+            processed = self.signalP.simple_moving_avg(raw, self.window)
+            return normed, processed
+        elif processtype == "normalize": 
+            return normed, normed
+        else:
+            return normed, raw
 
     def init_output_dir(self):
 
@@ -40,18 +47,18 @@ class CorrAnalyzer:
 
         if len(row1["Distances"]) > len(row2["Distances"]):
             cropped_dist1 = row1["Distances"][:len(row2["Distances"])]
-            cropped_norm1 = row1["Normalized"][:len(row2["Normalized"])]
+            cropped_processed1 = row1["Processed"][:len(row2["Processed"])]
             cropped_dist2 = row2["Distances"]
-            cropped_norm2 = row2["Normalized"]
+            cropped_processed2 = row2["Processed"]
         else:
             cropped_dist2 = row2["Distances"][:len(row1["Distances"])]
-            cropped_norm2 = row2["Normalized"][:len(row1["Normalized"])]
+            cropped_processed2 = row2["Processed"][:len(row1["Processed"])]
             cropped_dist1 = row1["Distances"]
-            cropped_norm1 = row1["Normalized"]
+            cropped_processed1 = row1["Processed"]
 
-        if self.min_max_scale: 
-            row1_data = cropped_norm1
-            row2_data = cropped_norm2
+        if self.processed: 
+            row1_data = cropped_processed1
+            row2_data = cropped_processed2
         else: 
             row1_data = cropped_dist1
             row2_data = cropped_dist2
@@ -75,44 +82,20 @@ class CorrAnalyzer:
             self.results[key] = {res_key : round(float(r_and_p_l[0]), 5)}
 
 
-        if self.makeplots:
-
-            # Interpolate missing data.
-            df_interpolated = df.interpolate()
-            # Compute rolling window synchrony
-            rolling_r = df_interpolated[file_path1].rolling(window=r_window_size, center=True).corr(df_interpolated[file_path2])
-            f, ax =plt.subplots(2,1,figsize=(14,6),sharex=True)
-
-            ax[0].set(xlabel='Frame',ylabel='Distance from anchor point')
-            df_interpolated.plot(ax=ax[0])
-            rolling_r.plot(ax=ax[1])
-            ax[1].set(xlabel='Frame',ylabel='Pearson r')
-            
-            plt.suptitle("Distance data and rolling window correlation \n" + 
-                "landmark number: " + 
-                row1["Landmark_key"] + 
-                ", rolling window: " + 
-                str(r_window_size) + 
-                " frames, Pearson value: " + 
-                str(round(float(r_and_p_l[0]), 5)))
-
-            plt.savefig(output_directory + "_landmark_" + row1["Landmark_key"])
-
-
-    def find_corr_between_pairs(self, file_path1, file_path2):
+    def find_corr_between_filepairs(self, file_path1, file_path2):
         df_1 = self.data[file_path1]
         df_2 = self.data[file_path2]    
         
         for index, row in df_1.iterrows():
-            self.find_single_corr(row, df_2.iloc[index], file_path1, file_path2)
+            self.find_single_corr(row, df_2.loc[index], file_path1, file_path2)
         
         # write_analysis_report(output_directory, file_path1, file_path2, pearson_r_and_p, r_window_size)
 
     
     def compare_data(self): 
 
-        for pair in self.pairs: 
-            self.find_corr_between_pairs(pair[0], pair[1])
+        for filepair in self.filepairs: 
+            self.find_corr_between_filepairs(filepair[0], filepair[1])
         
         self.get_avg()
         self.write_analysis_report()
@@ -166,30 +149,7 @@ class CorrAnalyzer:
                 
 
 
-        # df = pd.DataFrame(data=final_res)
 
-
-
-    # def write_analysis_report1(self, output_dir, file_path1, file_path2, r_and_p, r_window_size):
-    #     with open(output_dir + "report.txt", "w") as f:
-    #         f.write("Comparing " + file_path1 + " with " + file_path2)
-    #         f.write("\nNormalized by " + normalize_by.replace("_"," "))
-    #         f.write("\nWindow size: " + str(r_window_size))
-    #         f.write("\nAnalysis type: " + analysis_type)
-    #         f.write("\n")
-    #         s = 0
-    #         rvalues = []
-    #         for key, value in r_and_p.items():
-    #             s += float(value[0])
-    #             rvalues.append(float(value[0]))
-    #             f.write("\nLandmark " + key + " r value: " + value[0] + ", p value: " + value[1])
-
-    #         f.write ("\n\n Median Pearson R value: " + str(round(statistics.median(rvalues), 4)))
-    #         f.write ("\n Average Pearson R value: " + str(round(s/len(r_and_p), 4)))
-
-
-  
-            
 
 
 

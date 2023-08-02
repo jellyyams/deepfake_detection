@@ -1,0 +1,10 @@
+(91, 185) similarity avg pearson: 0.767499 difference avg pearson: 0.17017125
+(0, 375) similarity avg pearson: 0.7688949999999999 difference avg pearson: 0.18736875
+(267, 375) similarity avg pearson: 0.763225 difference avg pearson: 0.18081625
+(37, 375) similarity avg pearson: 0.761976 difference avg pearson: 0.18475125
+(40, 84) similarity avg pearson: 0.766753 difference avg pearson: 0.19524875
+(39, 321) similarity avg pearson: 0.76875 difference avg pearson: 0.18842875
+(91, 191) similarity avg pearson: 0.7744599999999999 difference avg pearson: 0.1929825
+(37, 321) similarity avg pearson: 0.780619 difference avg pearson: 0.1977275
+(98, 321) similarity avg pearson: 0.757889 difference avg pearson: 0.15406875
+(269, 375) similarity avg pearson: 0.7690180000000001 difference avg pearson: 0.19689250000000003

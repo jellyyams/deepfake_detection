@@ -26,7 +26,6 @@ class MeshData:
             "lipsLeftCorner" : [287, 292, 306, 308, 291],
             "lipsBelowLeft" : [18, 313, 406, 335, 273],
             "lipsBelowRight" : [83, 182, 106, 43],
-
             "rightEyeUpper0" : [246, 161, 160, 159, 158, 157, 173],
             "rightEyeLower0" : [33, 7, 163, 144, 145, 153, 154, 155, 133],
             "rightEyeUpper1" : [247, 30, 29, 27, 28, 56, 190],
@@ -34,7 +33,6 @@ class MeshData:
             "rightEyeUpper2" : [113, 225, 224, 223, 222, 221, 189],
             "rightEyeLower2" : [226, 31, 228, 229, 230, 231, 232, 233, 244],
             "rightEyeLower3" : [143, 111, 117, 118, 119, 120, 121, 128, 245],
-
             "rightEyebrowUpper" : [156, 70, 63, 105, 66, 107, 55, 193],
             "rightEyebrowLower" : [35, 124, 46, 53, 52, 65],
             "rightEyeIris" : [],

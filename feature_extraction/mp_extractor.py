@@ -29,7 +29,7 @@ class MPFeatureExtractor(object):
         landmark_pairs=[], 
         target_pairs=[],
         norm_approach="first_upper_lower_bbox", 
-        analysis_types=["landmark_to_anchor"],
+        output_data=["anchor_distances"],
         output_directory="mp_output_videos", 
         anchor_landmark=4, 
         initial_bbox_padding=30, 
@@ -56,7 +56,7 @@ class MPFeatureExtractor(object):
         self.dist_display_win_size = dist_display_win_size
         self.generate_video = generate_video
         self.norm_approach = norm_approach
-        self.analysis_types = analysis_types
+        self.output_data = output_data
         self.target_pairs = target_pairs
 
         # initalize trackers
@@ -286,12 +286,12 @@ class MPFeatureExtractor(object):
                 self.landmark_coord_tracker[i].append(l)
 
             
-            if any(t in "landmark_to_anchor" for t in self.analysis_types) and i in self.target_landmarks:
+            if "anchor_distances" in self.output_data and i in self.target_landmarks:
                 self.set_landmark_dist(anchor_coord, l, i, self.landmark_data_tracker, i)
 
 
     def track_landmark_groups(self):
-        if any(t in "landmark_pairs" for t in self.analysis_types):
+        if any(t in "pairwise_distances" for t in self.output_data):
 
             for pair in self.landmark_pairs:
                 coord1 = self.curr_frame_aligned_landmarks_3d[pair[0]]
@@ -405,6 +405,7 @@ class MPFeatureExtractor(object):
         print('Average overall FPS: ', self.curr_overall_fps)
         
         if self.generate_video:
+            print("releasing vid")
             self.input_capture.release()
             self.vidgen.release_vid()
 

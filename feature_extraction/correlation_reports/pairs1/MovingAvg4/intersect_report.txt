@@ -1,0 +1,4 @@
+(267, 375) similarity avg pearson: 0.7443480000000001 difference avg pearson: 0.19101625
+(37, 375) similarity avg pearson: 0.743673 difference avg pearson: 0.19287625
+(98, 321) similarity avg pearson: 0.7368180000000001 difference avg pearson: 0.16730625
+(91, 185) similarity avg pearson: 0.746389 difference avg pearson: 0.1846775
