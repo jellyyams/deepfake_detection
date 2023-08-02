@@ -38,6 +38,7 @@ class VidGenerator:
         return frames
 
     def release_vid(self):
+        print(self.output_path)
         self.out_vid.release()
     
     def write_combined(self):
@@ -124,12 +125,12 @@ class VidGenerator:
             y = int(coord[1])
             if i == anchor_num:
                 color = (255, 255, 255)
-            elif i in target_landmarks:
-                color = self.drawing_colors[i][::-1]
+            # elif i in target_landmarks:
+            #     color = self.drawing_colors[i][::-1]
 
-                blank = cv2.line(blank, (x, y), anchor, color, 1)
-                d = data_tracker[i][-1]
-                cv2.putText(blank, '{:.2f}'.format(d), (x, y), cv2.FONT_HERSHEY_DUPLEX, .5, color)
+            #     blank = cv2.line(blank, (x, y), anchor, color, 1)
+            #     d = data_tracker[i][-1]
+            #     cv2.putText(blank, '{:.2f}'.format(d), (x, y), cv2.FONT_HERSHEY_DUPLEX, .5, color)
             else:
                 color = (255, 255, 255)
             blank = cv2.circle(blank, (x, y), 2, color=color, thickness=-1)
