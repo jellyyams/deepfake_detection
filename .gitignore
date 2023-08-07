@@ -1,6 +1,7 @@
 *.mp4
 *.pth
 *.avi
+*.txt
 *.pkl
 *.json
 *.task
