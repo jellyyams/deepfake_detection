@@ -6,4 +6,7 @@
 *.json
 *.task
 *.csv
+*.jpeg
+*.png
+*.bmp
 *__pycache__
