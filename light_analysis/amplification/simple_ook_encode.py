@@ -179,6 +179,8 @@ if display:
 
 #flip to account for slm's flipped display
 on_frame = cv2.flip(on_frame, 0)
+on_frame = cv2.flip(on_frame, 1)
 off_frame = cv2.flip(off_frame, 0)
+off_frame = cv2.flip(off_frame, 1)
 cv2.imwrite('{}/on_frame_r{}_g{}_b{}_N{}_buff{}.bmp'.format(output_dir_path, cell_color[2], cell_color[1], cell_color[0], N, buffer_space), on_frame)
 cv2.imwrite('{}/off_frame_r{}_g{}_b{}_N{}_buff{}.bmp'.format(output_dir_path, cell_color[2], cell_color[1], cell_color[0], N, buffer_space), off_frame)

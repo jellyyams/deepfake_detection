@@ -19,9 +19,8 @@ def drawRectangle(action, x, y, flags, *userdata):
     cv2.imshow("Window",image)
  
 
-output_vid_path = 'aug6_cropped_videos'
-input_vid_path = 'aug6_input_videos/r60_g0_b0_1000mson_1000msoff_N30_buff30_rep15.MP4'
-
+output_vid_path = 'test_vids/aug5_cropped_videos'
+input_vid_path = 'test_vids/aug5_input_videos/r140_g0_b0_1000mson_1000msoff_rep15.MP4'
 
 input_capture = cv2.VideoCapture(input_vid_path)
 
@@ -55,6 +54,8 @@ while k!=113:
     image= temp.copy()
     cv2.imshow("Window", image)
  
+# top_left_corner = [(140, 506)]
+# bottom_right_corner = [(548, 747)]
 print(top_left_corner)
 print(bottom_right_corner)
 cv2.destroyAllWindows()
