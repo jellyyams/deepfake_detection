@@ -823,6 +823,5 @@ def decode_test(input_vid_path):
 
 
 
-
 input_vid_path = 'test_vids/aug6_cropped_videos/r60_g0_b0_1000mson_1000msoff_N30_buff30_rep15_croppedrgba.avi'
 decode_test(input_vid_path)

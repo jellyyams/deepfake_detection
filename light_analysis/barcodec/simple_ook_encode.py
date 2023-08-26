@@ -26,7 +26,8 @@ else:
         print(max_blocks_H)
         max_bits = max_blocks_H * max_blocks_W * num_info_cells
     else:
-        max_blocks_horiz = W / (N + buffer_space)
+        max_blocks_W = int(W / (N + buffer_space))
+        max_blocks_H = int(H / (N + buffer_space))
 
 
 
