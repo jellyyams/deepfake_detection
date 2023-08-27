@@ -4,29 +4,12 @@ import os
 import time
 from enum import Enum
 
-class OrderedEnum(Enum):
-    def __ge__(self, other):
-        if self.__class__ is other.__class__:
-            return self.value >= other.value
-        return NotImplemented
-    def __gt__(self, other):
-        if self.__class__ is other.__class__:
-            return self.value > other.value
-        return NotImplemented
-    def __le__(self, other):
-        if self.__class__ is other.__class__:
-            return self.value <= other.value
-        return NotImplemented
-    def __lt__(self, other):
-        if self.__class__ is other.__class__:
-            return self.value < other.value
-        return NotImplemented
-
-class LogLevel(OrderedEnum):
-    ERROR = 4
-    WARNING = 3
-    INFO = 2
+class LogLevel(Enum):
     DEBUG = 1
+    INFO = 2
+    WARNING = 3
+    ERROR = 4
+
 
 LOG_LEVEL  = LogLevel.DEBUG
     
@@ -58,7 +41,7 @@ sock.connect((host_ip, port))
 
 log("The socket has successfully connected.", LogLevel.INFO)
 log("Sending test message from client to server.", LogLevel.DEBUG)
-sock.send("Ping SLM server from client".encode())
+sock.send("Ping client from server".encode())
 
 # receive data from the server and decoding to get the string.
 print(sock.recv(1024).decode())
@@ -81,5 +64,5 @@ log("Done sending file to server", LogLevel.INFO)
 f.close()
 
 # close the connection
-# sock.close()    
+sock.close()    
      

@@ -8,15 +8,16 @@ class BorderType(Enum):
     SOLID = 1
     GRID = 2
 
-corner_markers = True
+corner_markers = False
 border_type = BorderType.GRID
 
-N = 40 #size of one cell in SLM pixels
+N = 15 #size of one cell in SLM pixels
 max_info_cells_W = None
 max_info_cells_H = None
-buffer_space = 40  #num pixels (SLM) between cells
-cell_color = (0, 0, 80)
-cell_color = (0, 255, 0)
+buffer_space = 15  #num pixels (SLM) between cells
+cell_color = (0, 0, 60)
+border_width = 15 #must be leq N
+border_buffer_space = 15
 
 if cell_color[0] == 0:
     corner_marker_color = (255, 0, 0)
@@ -28,23 +29,25 @@ W = 640
 H = 360
 
 if corner_markers:
-    max_info_cells_W = int((W - 2*N - 2*N - buffer_space) / (N + buffer_space))
-    max_info_cells_H = int((H - 2*N - 2*N - buffer_space) / (N + buffer_space))
+    max_info_cells_W = int((W - 2*N - 2*border_width - border_buffer_space) / (N + buffer_space))
+    max_info_cells_H = int((H - 2*N - 2*border_width - border_buffer_space) / (N + buffer_space))
 
     print(max_info_cells_H)
     print(max_info_cells_W)
 
-    max_border_cells_W = int((W -2*N) / (N + buffer_space))
-    max_border_cells_H = int((H -2*N + buffer_space) / (N + buffer_space))
+    max_border_cells_W = int((W -2*N) / (border_width + border_buffer_space))
+    max_border_cells_H = int((H -2*N + border_buffer_space) / (border_width + border_buffer_space))
     print(max_border_cells_H)
     print(max_border_cells_W)
 else:
-    max_info_cells_W = int((W - 2*N - 2*buffer_space) / (N + buffer_space))
-    max_info_cells_H = int((H - 2*N - buffer_space) / (N + buffer_space))
+    max_info_cells_W = int((W - 2*border_width - border_buffer_space) / (N + buffer_space))
+    max_info_cells_H = int((H - 2*border_width - border_buffer_space) / (N + buffer_space))
     print(max_info_cells_W)
     print(max_info_cells_H)
-    max_border_cells_W = int(W / (N + buffer_space))
-    max_border_cells_H = int((H + buffer_space)/ (N + buffer_space))
+    max_border_cells_W = int((W + border_buffer_space) / (border_width + border_buffer_space))
+    max_border_cells_H = int((H + border_buffer_space)/ (border_width + border_buffer_space))
+    print(max_border_cells_H)
+    print(max_border_cells_W)
 
 max_bits = max_info_cells_H * max_info_cells_W 
 
@@ -59,7 +62,7 @@ symbol_map = {
 }
 num_symbols = len(symbol_map.keys())
 
-output_dir_path = 'aug23_psk/r{}_g{}_b{}_N{}_b{}_s{}'.format(cell_color[2], cell_color[1], cell_color[0], N, buffer_space, num_symbols)
+output_dir_path = 'aug27_psk/r{}_g{}_b{}_N{}_b{}_s{}'.format(cell_color[2], cell_color[1], cell_color[0], N, border_width, num_symbols)
 os.makedirs(output_dir_path, exist_ok=True)
 
 
@@ -69,32 +72,53 @@ def add_border(frame):
     else:
         offset = 0
 
-    if corner_markers:
-        bottom_row = max_border_cells_H * (N+buffer_space) - offset
-        right_col = max_border_cells_W * (N+buffer_space) - offset
-    else:
-        bottom_row = (max_border_cells_H - 1) * (N+buffer_space)
-        right_col = (max_border_cells_W - 1) * (N+buffer_space)
-
+   
+    bottom_row = (max_border_cells_H - 1) * (border_width+border_buffer_space) + offset
+    right_col = (max_border_cells_W - 1) * (border_width+border_buffer_space) + offset
+ 
    
     for i in range(max_border_cells_W):
-        frame[offset:offset+N, offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, 0] = cell_color[0]
-        frame[offset:offset+N, offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, 1] = cell_color[1]
-        frame[offset:offset+N, offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, 2] = cell_color[2]
+        frame[offset:offset+border_width, offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, 0] = cell_color[0]
+        frame[offset:offset+border_width, offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, 1] = cell_color[1]
+        frame[offset:offset+border_width, offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, 2] = cell_color[2]
 
-        frame[bottom_row:bottom_row+N, offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, 0] = cell_color[0]
-        frame[bottom_row:bottom_row+N, offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, 1] = cell_color[1]
-        frame[bottom_row:bottom_row+N, offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, 2] = cell_color[2]
+        frame[bottom_row:bottom_row+border_width, offset+i*(border_width + border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, 0] = cell_color[0]
+        frame[bottom_row:bottom_row+border_width, offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, 1] = cell_color[1]
+        frame[bottom_row:bottom_row+border_width, offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, 2] = cell_color[2]
        
-    for i in range(max_border_cells_H):
-        frame[offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, offset:offset+N, 0] = cell_color[0]
-        frame[offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, offset:offset+N, 1] = cell_color[1]
-        frame[offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, offset:offset+N, 2] = cell_color[2]
 
-        frame[offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, right_col:right_col+N, 0] = cell_color[0]
-        frame[offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, right_col:right_col+N, 1] = cell_color[1]
-        frame[offset+i*(N+buffer_space):offset+i*(N+buffer_space)+N, right_col:right_col+N, 2] = cell_color[2]
-  
+        if border_type == BorderType.SOLID and i < max_border_cells_W - 1:
+            frame[offset:offset+border_width, offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, 0] = cell_color[0]
+            frame[offset:offset+border_width, offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, 1] = cell_color[1]
+            frame[offset:offset+border_width, offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, 2] = cell_color[2]
+
+            frame[bottom_row:bottom_row+border_width, offset+i*(border_width + border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, 0] = cell_color[0]
+            frame[bottom_row:bottom_row+border_width, offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, 1] = cell_color[1]
+            frame[bottom_row:bottom_row+border_width, offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, 2] = cell_color[2]
+        
+            
+
+    for i in range(max_border_cells_H):
+        frame[offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, offset:offset+border_width, 0] = cell_color[0]
+        frame[offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, offset:offset+border_width, 1] = cell_color[1]
+        frame[offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, offset:offset+border_width, 2] = cell_color[2]
+      
+      
+        frame[offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, right_col:right_col+border_width, 0] = cell_color[0]
+        frame[offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, right_col:right_col+border_width, 1] = cell_color[1]
+        frame[offset+i*(border_width+border_buffer_space):offset+i*(border_width+border_buffer_space)+border_width, right_col:right_col+border_width, 2] = cell_color[2]
+        
+        if border_type == BorderType.SOLID and i < max_border_cells_H - 1:
+            frame[offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, offset:offset+border_width, 0] = cell_color[0]
+            frame[offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, offset:offset+border_width, 1] = cell_color[1]
+            frame[offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, offset:offset+border_width, 2] = cell_color[2]
+        
+        
+            frame[offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, right_col:right_col+border_width, 0] = cell_color[0]
+            frame[offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, right_col:right_col+border_width, 1] = cell_color[1]
+            frame[offset+i*(border_width+border_buffer_space)+border_width:offset+i*(border_width+border_buffer_space)+2*border_width, right_col:right_col+border_width, 2] = cell_color[2]
+            
+
     return frame
    
 def add_corner_markers(frame):
@@ -121,13 +145,20 @@ def add_corner_markers(frame):
 #build test bitstring to encode
 input_bitstring = ''
 
+for i in range(5):
+    input_bitstring += '01100100111001101001000010010100011101'
 
-input_bitstring += '0000000000'
+# for i in range(5):
+#     input_bitstring += '0110010111010101101'
+
+# for i in range(3):
+#     input_bitstring += '0110011101'
+
 if len(input_bitstring) > max_bits:
     print("Input bitstring too long.")
     sys.exit(0)
 
-offset = N + buffer_space
+offset = border_width + buffer_space
 if corner_markers:
     offset += N 
 
@@ -159,4 +190,5 @@ for i in range(num_symbols):
 
     frame = cv2.flip(frame, 0)
     
-    cv2.imwrite('{}/frame{}.bmp'.format(output_dir_path, chr(ord('@')+i+1)), frame)
+    #chr(ord('@')+i+1)
+    cv2.imwrite('{}/frame{}.bmp'.format(output_dir_path, i), frame)

@@ -9,29 +9,29 @@
 #define BUFFSIZE 4096
 #define MAX_LINE 4096
 
-enum LogLevel{DEBUG, INFO, WARNING, ERROR};
+enum LogLevel{INFO, DEBUG, WARNING, ERROR};
 
-#define LOG_LEVEL DEBUG
+#define LOG_LEVEL LogLevel.DEBUG
 
 void server_log(char *message, enum LogLevel log_level){
     if (log_level >= LOG_LEVEL) {
         if (log_level == INFO){
-            printf("SERVER [INFO]: %s\n", message);
+            printf("SERVER INFO: %s\n", message);
         } else if (log_level == DEBUG)
         {
-            printf("SERVER [DEBUG]: %s\n", message);
+            printf("SERVER DEBUG: %s\n", message);
         } else if (log_level == WARNING)
         {
-            printf("SERVER [WARNING]: %s\n", message);
+            printf("SERVER WARNING: %s\n", message);
         } else {
-        printf("SERVER [ERROR]: %s\n", message); 
+        printf("SERVER ERROR: %s\n", message); 
         }  
     }
     
 }
 
 void display_message(char *message){
-    printf("SERVER [MESSAGE]: %s\n", message);
+    printf("Server got following message from client: %s\n", message);
 }
 
 int StartsWith(const char *a, const char *b)
@@ -93,7 +93,7 @@ int main(int argc, char const* argv[])
     display_message(buffer);
     
     send(sock, hello, strlen(hello), 0);
-    server_log("Sent hello message to client", DEBUG);
+    server_log("Sent hellos message to client", DEBUG);
   
     //try to receive file
     char filename[BUFFSIZE] = {0}; 

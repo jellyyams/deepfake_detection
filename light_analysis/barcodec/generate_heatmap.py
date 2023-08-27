@@ -5,6 +5,8 @@ import seaborn as sns
 import tqdm 
 from sklearn.preprocessing import minmax_scale
 import sys
+from sklearn.cluster import DBSCAN
+from colordict import ColorDict
 
 def loadVideo(video_path, colorspace='ycrcb', downsamples=0, crop_coords=None):
     """
@@ -195,10 +197,15 @@ def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples
     Perform rough boundary analysis on downsampled version of video in order to identify region to run
     analysis on with full resolution
     """
-    min_contour_area = 100
+    min_contour_area = 0
 
     images, fps =  loadVideo(video_path, colorspace=colorspace, downsamples=downsamples)
+    print(images.shape)
+    plt.plot(images[:,296,181,2])
+    plt.show()
     chan1, chan2, chan3  = fftVideo(images, fps, low_freq, high_freq, colorspace=colorspace)
+    
+    
     if target_channel == 0:
         target_chan = chan1
     elif target_channel == 1:
@@ -212,7 +219,7 @@ def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples
     #perform analysis of downsampled heatmap corresponding to desired channel
     blur_target_chan = cv2.GaussianBlur(target_chan,(5,5),0)
     otsu_ret, _ = cv2.threshold(blur_target_chan,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    _, target_chan_th = cv2.threshold(blur_target_chan,otsu_ret - 30,255,cv2.THRESH_BINARY)
+    _, target_chan_th = cv2.threshold(blur_target_chan,otsu_ret,255,cv2.THRESH_BINARY)
     #target_chan_th = cv2.adaptiveThreshold(target_chan,255,cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 399, 0)
     # kernel = np.ones((3, 3), np.uint8) #must use odd kernel to avoid shifting
     # target_chan_th = cv2.erode(target_chan_th, kernel, iterations=2)
@@ -224,8 +231,10 @@ def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples
     right = float('-inf')
     top = float('inf')
     bottom = float('-inf')
+    contour_centers = []
     for i, cnt in enumerate(contours):
         x, y, w, h = cv2.boundingRect(cnt)
+        contour_centers.append([int(x + w/2), int(y + h/2)])
         if w * h < min_contour_area:
             continue
         vis_target_chan_th = cv2.rectangle(vis_target_chan_th, (x, y), (x+w, y+h), (0, 0, 255), 1)
@@ -237,6 +246,16 @@ def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples
             bottom = y + h
         if y < top: 
             top = y
+    
+    contour_centers =  np.array(contour_centers)
+    clustering = DBSCAN(eps=3, min_samples=2).fit(contour_centers)
+    print(contour_centers)
+    print(clustering.labels_)
+    colors = ColorDict()
+    color_keys = list(colors.keys())
+    for i in range(contour_centers.shape[0]):
+        cv2.circle(vis_target_chan_th, contour_centers[i], 2, colors[color_keys[clustering.labels_[i]]], -1)
+        
     
     vis_target_chan_th = cv2.rectangle(vis_target_chan_th, (left, top), (right, bottom), (255, 0, 0), 1)
 
@@ -274,5 +293,5 @@ def generate_heatmap(video_path, low_freq, high_freq, colorspace='ycrcb', target
         _ , _ , _  = fftVideo(images, fps, low_freq, high_freq, colorspace=colorspace, output_suffix=vid_name)
        
 
-generate_heatmap('test_vids/aug23_input_videos/r60_g0_b0_N30_b30_s2.MP4', .45, .55, target_channel=2, padding=30, colorspace='bgr')
+generate_heatmap('test_vids/aug27_input_videos/r60_g0_b0_N30_b30_s2_05Hz.MP4', 0.45, .55 , target_channel=1, padding=30, colorspace='ycrcb')
 

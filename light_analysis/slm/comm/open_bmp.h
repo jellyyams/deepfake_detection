@@ -35,25 +35,16 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <linux/fb.h> 
-#include <stdint.h>
-#include <sys/mman.h> 
-#include <unistd.h> 
-#include <string.h> 
-#include <sys/time.h> 
-#include <sys/ioctl.h>
-#include <linux/kd.h>
-#include <dirent.h>
+#define IMG_Y 360
+#define IMG_X 640
 
-int setup_buffer(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, long screensize, int num_frames, uint8_t **buffer);
-int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, int *fb, long *screensize, uint8_t **fbp, int video_mode);
-int setup_GPIO();
-int cleanup(int fb, uint8_t *fbp, uint8_t *buffer, long screensize, int restart_x, int video_mode, char **image_names);
-int clear_screen(uint8_t* fbp, uint8_t* bbp, struct fb_var_screeninfo* var_info, struct fb_fix_screeninfo* fix_info, long screensize);
-void print_fix_info(struct fb_fix_screeninfo fix_info);
-void print_var_info(struct fb_var_screeninfo var_info);
-inline uint32_t pixel_color(uint8_t r, uint8_t g, uint8_t b, struct fb_var_screeninfo *var_info);
-int test_loop(uint8_t* fbp, uint8_t* bbp, struct fb_var_screeninfo* var_info, struct fb_fix_screeninfo* fix_info, int delay, int repeat, long screensize, int trig_in);
+typedef struct pixel {
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+
+} pixel;
+
+int open_bmp(char * file_name, pixel** img);
+int verify_bmp(FILE* f, long* offset, char* file_name);
+int load_image_files(int *num_images, char **image_names, char *bmp_dir_path);

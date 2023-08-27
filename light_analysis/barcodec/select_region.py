@@ -19,8 +19,8 @@ def drawRectangle(action, x, y, flags, *userdata):
     cv2.imshow("Window",image)
  
 
-output_vid_path = 'test_vids/aug5_cropped_videos'
-input_vid_path = 'test_vids/aug5_input_videos/r140_g0_b0_1000mson_1000msoff_rep15.MP4'
+output_vid_path = 'test_vids/aug27_cropped_videos'
+input_vid_path = 'test_vids/aug27_input_videos/r140_g0_b0_N30_b30_s2_5Hz.MP4'
 
 input_capture = cv2.VideoCapture(input_vid_path)
 

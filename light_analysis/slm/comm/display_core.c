@@ -39,16 +39,7 @@
 #include "open_bmp.h"
 #include "display_core.h"
 
-int setup_buffer(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, long screensize, int num_frames, uint8_t **buffer){
-	*buffer = mmap(0, screensize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, (off_t)0); // Second buffer 
-	if (*buffer == MAP_FAILED) {
-		printf("mmap failed\n");
-		return EXIT_FAILURE;
-	} 
-	return EXIT_SUCCESS;
-}
-
-int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, int *fb, long *screensize, uint8_t **fbp, int video_mode) {
+int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, int *fb, long *screensize, uint8_t **fbp, uint8_t **buffer, int video_mode) {
 	// Setup fb0
 	*fb =  open("/dev/fb0", O_RDWR); // set framebuffer
 	if (*fb < 0) {
@@ -78,11 +69,13 @@ int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_i
 	// Setup mmaped buffers
 	*screensize = var_info->yres_virtual * fix_info->line_length; // Determine total size of screen in bytes
 	*fbp = mmap(0, *screensize, PROT_READ | PROT_WRITE, MAP_SHARED, *fb, (off_t)0); // Map screenbuffer to memory with read and write access and visible to other processes
+	*buffer = mmap(0, *screensize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, (off_t)0); // Second buffer 
 
-	if (*fbp == MAP_FAILED) {
+	if (*fbp == MAP_FAILED || *buffer == MAP_FAILED) {
 		printf("mmap failed\n");
 		return EXIT_FAILURE;
 	} 
+
 
 	if (DEBUG) {
 		print_fix_info(*fix_info);
@@ -90,6 +83,9 @@ int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_i
 	}
 
 	return EXIT_SUCCESS;
+
+
+
 }
 
 

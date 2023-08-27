@@ -48,8 +48,7 @@
 #include <linux/kd.h>
 #include <dirent.h>
 
-int setup_buffer(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, long screensize, int num_frames, uint8_t **buffer);
-int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, int *fb, long *screensize, uint8_t **fbp, int video_mode);
+int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_info, int *fb, long *screensize, uint8_t **fbp, uint8_t **buffer, int video_mode);
 int setup_GPIO();
 int cleanup(int fb, uint8_t *fbp, uint8_t *buffer, long screensize, int restart_x, int video_mode, char **image_names);
 int clear_screen(uint8_t* fbp, uint8_t* bbp, struct fb_var_screeninfo* var_info, struct fb_fix_screeninfo* fix_info, long screensize);
