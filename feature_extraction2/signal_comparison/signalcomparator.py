@@ -6,7 +6,7 @@ import os
 import scipy.stats as stats
 
 
-class CorrAnalyzer: 
+class SignalComparator: 
     def __init__(self, files, analysis, makeplots, data, output_dir_root, file_extension, most_similar, cutoff, processed=True,  r_window_size=25): 
         self.most_similar = most_similar
         self.file_extension = file_extension

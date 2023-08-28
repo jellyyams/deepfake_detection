@@ -243,8 +243,6 @@ class FeatureExtractor(object):
         """
         raise NotImplementedError("Method track_landmarks() must be implemented in child class.")
 
-
-
     def get_frame(self, initial_face_bbox, frame):
         if initial_face_bbox == None:
             return None

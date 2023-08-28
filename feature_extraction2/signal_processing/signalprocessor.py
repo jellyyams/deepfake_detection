@@ -7,16 +7,9 @@ class SignalProcessesor:
     def __init__(self, window):
         self.window = window
     
-    def butterworth(self, raw):
-        fs = 30
-        fc = 4
-        w = fc / (fs / 2)
-        b, a = signal.butter(5, w, 'low')
-        output = signal.filtfilt(b, a, raw)
-        # self.plot_before_after(raw, output, "butterworth")
-        return output
+    def run(self):
+        pass 
 
-    
     def process_signal(self, raw, processtype): 
         normed = self.min_max_norm(raw)
         if processtype == "moving_average": 
@@ -30,6 +23,15 @@ class SignalProcessesor:
         else:
             return normed, raw
         
+    
+    def butterworth(self, raw):
+        fs = 30
+        fc = 4
+        w = fc / (fs / 2)
+        b, a = signal.butter(5, w, 'low')
+        output = signal.filtfilt(b, a, raw)
+        # self.plot_before_after(raw, output, "butterworth")
+        return output
     
     def simple_moving_avg(self, signal, window_size, title=""):
         i = 0
@@ -89,7 +91,6 @@ class SignalProcessesor:
         return res
 
 
-    
     def plot_before_after(self, before, after, title):
         plt.clf()
         plt.plot(before, label="before")
@@ -98,16 +99,6 @@ class SignalProcessesor:
         plt.suptitle(title)
         plt.savefig("plots/" + title)
 
-
-    def plot_test(self, data1, data2, averaged, title):
-        plt.clf()
-        plt.plot(data1, label="data1")
-        plt.plot(data2, label="data2")
-        plt.plot(averaged, label="averaged")
-        print(len(data1), len(data2), len(averaged))
-        plt.legend()
-        plt.suptitle(title)
-        plt.savefig("plots/" + title)
 
 
 

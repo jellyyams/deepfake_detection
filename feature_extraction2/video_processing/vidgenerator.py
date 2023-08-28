@@ -2,12 +2,44 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
 import pickle
 
 class VidGenerator:
+    '''
+    A class for generating an output video during the video processing stage of pipeline
 
-    def __init__(self, output_directory, filename, display_dim, input_cap_fps, frames_to_include, initial_bbox_padding, draw_landmark_nums, draw_all_landmarks, input_H, input_W, dist_display_win_size=60):
+    Attributes
+    ----------
+    dist_display_win_size : int
+        When displaying the animated plot of target-anchor distances, a window of size dist_display_win_size will roll
+        over the plot of target-anchor distances vs. time.
+    output_video_path : str
+        Path to output video 
+    frames: dict
+        a dict of the frames that will be included in final output video 
+    initial_bbox_padding : int
+        As described above, if initial detection is used, a crop of the frame determined by the initial face detection bounding box and initial_bbox_padding 
+        will be passed to facial landmark extraction. This crop will consist of the intiail face detection bounding box, padded on each
+        size by initial_bbox_padding pixels.
+    display_dim : int
+        Each frame of the outputted video will consist of the annoted input video frame, the annotated blank frame, and a distance plot frame, all side-by-side.
+        Each of these sub-frames will be display_dim x display_dim (W x H) pixels, for an overall frame dimension of 3*display_dim x display_dim (W x H) pixels.
+    draw_landmark_nums : bool
+        Whether to draw the number of the landmark next to the landmark in the output video
+    draw_all_landmarks : bool
+        Whether to draw all landmarks on the (as opposed to just target and anchor landmarks) in the output video's blank canvas
+    input_W, input_H: float
+        input video dimensions
+    draw_anchor_target_connector : bool
+        Whether to draw a line connecting each target landmark to the anchor landmark in the output video
+    blank_canvas : np array/cv2 frame
+        A blank black frame to draw on
+    drawing_colors : list of tuples
+        List of RGB tuples used for plotting distances
+
+    '''
+
+    def __init__(self, output_directory, filename, display_dim, input_cap_fps, frames_to_include, initial_bbox_padding, draw_landmark_nums, draw_all_landmarks, input_H, input_W, dist_display_win_size, draw_anchor_target_connector):
 
         if not os.path.exists(output_directory):
             os.makedirs(output_directory) 
@@ -21,6 +53,7 @@ class VidGenerator:
         self.draw_all_landmarks = draw_all_landmarks
         self.input_W = input_W
         self.input_H = input_H
+        self.draw_anchor_target_connector = draw_anchor_target_connector
 
         self.blank_canvas = cv2.cvtColor(np.uint8(np.ones((self.input_H, self.input_W))), cv2.COLOR_GRAY2BGR)
 
@@ -38,7 +71,7 @@ class VidGenerator:
         return frames
 
     def release_vid(self):
-        print(self.output_path)
+        print("video output path: " + self.output_path)
         self.out_vid.release()
     
     def write_combined(self):
@@ -97,10 +130,10 @@ class VidGenerator:
                 color = (255, 255, 255)
             elif i in target_landmarks:
                 color = self.drawing_colors[i][::-1]
-
-                frame = cv2.line(frame, (x, y), anchor, color, 1)
-                d = data_tracker[i][-1]
-                cv2.putText(frame, '{:.2f}'.format(d), (x, y), cv2.FONT_HERSHEY_DUPLEX, .5, color)
+                if self.draw_anchor_target_connector:
+                    frame = cv2.line(frame, (x, y), anchor, color, 1)
+                    d = data_tracker[i][-1]
+                    cv2.putText(frame, '{:.2f}'.format(d), (x, y), cv2.FONT_HERSHEY_DUPLEX, .5, color)
             else:
                 color = (255, 255, 255)
             frame = cv2.circle(frame, (x, y), 2, color=color, thickness=-1)

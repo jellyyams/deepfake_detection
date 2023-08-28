@@ -1,7 +1,52 @@
-num_landmarks = 468
+from itertools import combinations
 
-class MeshData:
+class Landmarks:
+    '''
+    A class that contains lists of landmarks for each region of the face
+
+    Attributes
+    ----------
+    num_landmarks: int
+        the total number of landmarks, likely either 468 or 478. MP identifies 478 but the mp_alignment file can only return 468 at the moment
+    landmarks : dict
+       a dict of each region of the face and the landmarks they contain in list format
+    upper_keywords: list
+        words that are used to identify which regions of the face are considered the top half 
+    bottom_keywords: list
+        words that are used to identify which regions of the face are considered the bottom half
+    all: list 
+        landmarks from 0 to the number of landmarks there are 
+    mouth_landmarks: list
+        list of all the landmarks on the mouth 
+    upper_landmarks: list 
+        landmarks in the upper half of the face
+    lower_landmarks: list 
+        landmarks in the lower half of the face
+    left_landmarks: list 
+        landmarks in the left half of the face
+    right_landmarks: list
+        landmarks in the right half of the face
+    upper_right_landmarks: list
+        landmakrs in the upper right quarter of the face
+    upper_left_landmarks: list
+        landmakrs in the upper left quarter of the face
+    lower_right_landmarks: list
+        landmakrs in the lower right quarter of the face
+    lower_left_landmarks: list
+        landmakrs in the lower left quarter of the face
+
+    Methods
+    ----------
+    set_mouth_landmarks(): finds all the landmarks that are on the mouth and sets mouth_landmarks to that list
+    set_upper_lower(): separates all landmarks into upper and lower lists
+    set_left_right(): separates all landmarks into left and right lists
+    set_quarters(): separates all landmarks into upper right, upper left, lower left, and lower right lists
+    get_landmarks_by_keyword(keywords): returns all landmarks that are labeled with one of the keywords
+    generate_landmark_pairs(landmarks): returns a list of landmarks pairs in sorted order (smaller landmark first and larger landmark second)
+
+    '''
     def __init__(self): 
+        self.num_landmarks = 468
 
         self.landmarks = {
             "silhouetteLeft" : [10,  338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152],
@@ -83,7 +128,7 @@ class MeshData:
         }
         self.upper_keywords = ["UpperCheek", "topOf", "forehead", "Eye", "silhouetteUpper", "midway"]
         self.lower_keywords = ["lips", "LowerCheek", "chin", "Ala", "Nostril", "nose", "silhouetteLower"]
-        self.all = list(range(0,num_landmarks))
+        self.all = list(range(0, self.num_landmarks))
 
         self.upper_landmarks = []
         self.lower_landmarks = [] 
@@ -96,26 +141,25 @@ class MeshData:
         self.lower_left_landmarks = []
         self.lower_right_landmarks = []
 
-        self.separate_upper_lower()
-        self.separate_right_left()
-        self.separate_into_quarters()
+        self.set_upper_lower()
+        self.set_left_right()
+        self.set_quarters()
 
 
-    def combine_mouth_landmarks(self):
+    def set_mouth_landmarks(self):
         for k, v in self.landmarks.items():
             if "lip" in k:
                 self.mouth_landmarks += v
 
-    def separate_upper_lower(self):
+    def set_upper_lower(self):
         for k, v in self.landmarks.items():
 
             if any(sub in k for sub in self.upper_keywords):
                 self.upper_landmarks += v
             elif any(sub in k for sub in self.lower_keywords):
                 self.lower_landmarks += v 
-        
     
-    def separate_right_left(self):
+    def set_left_right(self):
         for k, v in self.landmarks.items():
             if any(sub in k for sub in ["right", "Right"]):
                 self.right_landmarks += v
@@ -123,16 +167,33 @@ class MeshData:
                 self.left_landmarks += v 
         
 
-    def separate_into_quarters(self):
+    def set_quarters(self):
         self.upper_right_landmarks = list(set(self.upper_landmarks) & set(self.right_landmarks))
         self.upper_left_landmarks = list(set(self.upper_landmarks) & set(self.left_landmarks))
         self.lower_left_landmarks = list(set(self.lower_landmarks) & set(self.left_landmarks))
         self.lower_right_landmarks = list(set(self.lower_landmarks) & set(self.right_landmarks))
-
-    def separate_by_keywords(self, keywords):
+    
+    def get_landmarks_by_keyword(self, keywords): 
+        res = []
         for k, v in self.landmarks.items():
-            pass
+            if any(sub in k for sub in keywords):
+                res += v
+        
+        return res
 
+    def generate_landmark_pairs(self, landmarks):
+        c = list(combinations(landmarks, 2))
+        sorted_list = []
+        for pair in c:
+            if pair[0] > pair[1]:
+                sorted_list.append((pair[1], pair[0]))
+            else:
+                sorted_list.append(pair)
+        
+        return sorted_list
+        
+
+    
         
 
         
