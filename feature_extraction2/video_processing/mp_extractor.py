@@ -22,7 +22,7 @@ from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
 
 class MPFeatureExtractor(object):
-     """
+    """
     A class for extracting identity and content-related features from a video of a person speaking.
 
     Attributes
@@ -541,7 +541,7 @@ class MPFeatureExtractor(object):
         return False  
 
     
-    def run(self):
+    def process_video(self):
         """
         main function that runs this class
         """

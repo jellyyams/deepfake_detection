@@ -1,8 +1,11 @@
 from driver_config import *
 from video_processing.mp_extractor import MPFeatureExtractor 
+from signal_processing.signalprocessor import SignalProcessor
 from landmarks import Landmarks
 import os
 import csv
+import pandas as pd
+import shutil 
 
 class Driver: 
     '''
@@ -35,6 +38,8 @@ class Driver:
         
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
+        
+        shutil.copyfile("./driver_config.py", self.output_dir+"config_copy.py")
 
     def run_vid_processing(self): 
         """
@@ -63,15 +68,29 @@ class Driver:
                 draw_anchor_target_connector = self.vidp_settings["draw anchor target connector?"],
                 output_directory = self.output_dir + "videos/")
 
-            landmark_coords, landmark_single, landmark_groups = app.run()
+            landmark_coords, landmark_single, landmark_groups = app.process_video()
             pathsplit = vid.split('/')
             self.write_data_to_csv(landmark_coords, pathsplit[1], "coords", self.dirs["vid data output"])
             self.write_data_to_csv(landmark_single, pathsplit[1], "landmark_single", self.dirs["vid data output"])
             self.write_data_to_csv(landmark_groups, pathsplit[1], "landmark_groups", self.dirs["vid data output"])
 
     def run_signal_processing(self): 
-        data = self.read_data_from_csv(self.sigp_settings["files"], self.sigp_settings["datatype"], self.dirs["vid data output"])
-        print(data)
+        output_dir = self.output_dir + self.dirs["sig processing data output"] 
+        
+        signalprocessor = SignalProcessor(
+            self.sigp_settings["make plots for"], 
+            self.sigp_settings["should filter?"], 
+            self.sigp_settings["pipeline"], 
+            self.sigp_settings["moving avg window"], 
+            self.sigp_settings["butter settings"], 
+            output_dir, 
+            self.sigp_settings["pairs to avg"])
+ 
+        for dirname in self.sigp_settings["files"]:
+            for fname in self.sigp_settings["datatype"]:
+                dframe = self.read_data_from_csv(dirname, fname, self.dirs["vid data output"])
+         
+                signalprocessor.run(dframe, dirname, fname)     
     
     def run_signal_comparison(self): 
         for sim in self.sim_test_cases: 
@@ -86,7 +105,7 @@ class Driver:
     def find_best_pairs(self): 
         pass 
 
-    def write_data_to_csv(self, data, dirname, filename, rootfolder):
+    def write_data_to_csv(self, data, dirname, fname, rootfolder):
         """
         writes dict into csv format
         """
@@ -96,45 +115,21 @@ class Driver:
         if not os.path.exists(directory):
             os.makedirs(directory)
         
-        with open(directory + filename + ".csv", 'w') as f:
+        with open(directory + fname + ".csv", 'w') as f:
             writer = csv.DictWriter(f, data.keys())
             writer.writeheader()
             writer.writerow(data)
 
-    def read_data_from_csv(self, filepaths, fnames, rootfolder):
-        data = {}    
-        for f_path in file_paths:
-            for fname in fnames:
+    def read_data_from_csv(self, dirname, fname, rootfolder):
+    
+        full_path = self.output_dir + rootfolder + dirname + fname + ".csv"
+        df = pd.read_csv(full_path, header=None)
+        df = df.rename({0:"Landmark_key", 1:"Raw_data"}, axis="index")
+        df = df.T
 
-                full_path = self.output_dir + rootfolder + f_path + fname + ".csv"
-                df = pd.read_csv(full_path, header=None)
-                df = df.rename({0:"Landmark_key", 1:"Distances"}, axis="index")
-                df = df.T
-            
-                distances = []
-                processed = []
-                normalized = []
-
-                for index, row in df.iterrows():
-                    if not self.should_filter_pairs or (any(str(pair) in row["Landmark_key"] for pair in self.filter_pairs)): 
-                        l = row["Distances"].replace("]", "").replace("[", "").split(",")
-                        l = [float(i) for i in l]
-
-                        distances.append(l)
-                        normed, p = self.signalP.process_signal(l, self.preavg_process)
-                        processed.append(p)
-                        normalized.append(normed)
-                        
-                    else: 
-                        df.drop(index, inplace=True)
-            
-                df["Distances"] = distances
-                df["Normalized"] = normalized
-                df["Processed"] = processed
-
-                data[f_path] = df
+        return df
         
-        return data
+  
      
     
 def main(): 
