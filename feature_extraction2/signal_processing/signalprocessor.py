@@ -27,7 +27,7 @@ class SignalProcessor:
         
         for k, v in self.pairs_to_avg.items(): 
             res.append(k)
-            res + v
+            res = res + v
             
         return list(set(res))
 
@@ -39,18 +39,18 @@ class SignalProcessor:
             avg_index = self.pipeline.index("avg_across_signals")
             preavg_pipeline = self.pipeline[:avg_index]
             postavg_pipeline = self.pipeline[avg_index+1:]
-
-            pdata, ndata = self.filter_and_preavg_process(preavg_pipeline, dframe)
-            self.average_across_signals()
-
-            #average 
             
-            print(preavg_pipeline)
-            print(postavg_pipeline)
+
+            pre, ndata = self.filter_and_preavg(preavg_pipeline, dframe)
+            avg = self.avg_across_signals(pre)
+            pdata, n = self.postavg(postavg_pipeline, avg)
+
         else:
-            pdata, ndata = self.filter_and_preavg_process(self.pipeline, dframe)
-        self.make_plots(plotdir, fname)
+            pdata, ndata = self.filter_and_preavg(self.pipeline, dframe)
         
+        self.make_plots(plotdir, fname)
+        return pdata, ndata
+
     
     def make_plots(self, plotdir, fname): 
         if not os.path.exists(plotdir):
@@ -60,34 +60,58 @@ class SignalProcessor:
             self.plot_tracker[str(lkey)][0]["after"] = self.plot_tracker[str(lkey)][self.last_step]["after"]
             self.plot_res(self.plot_tracker[str(lkey)], str(lkey) + fname, plotdir)
 
-        
-    def filter_and_preavg_process(self, pipeline, dframe): 
+    def postavg(self, pipeline, data):
         pdata = {}
         ndata = {}
+        for pair, signal in data.items():
+            n, p, i = self.process_signal(signal, pipeline, pair)
+            pdata[pair] = p
+            ndata[pair] = n
+        if len(pipeline) > 0: 
+            self.last_step = self.last_step + i + 1
+        return pdata, ndata
+    
+    def process_row(self, row, pipeline):
+        l = row["Raw_data"].replace("]", "").replace("[", "").split(",")
+        l = [float(i) for i in l]
+        pair = row["Landmark_key"]
+        self.plot_tracker[pair] = {
+            0 : {
+                "type" : "Entire pipeline", 
+                "before" : l, 
+                "after" : []
+            }
+        }
+        p, n, i = self.process_signal(l, pipeline, pair)
+        return p, n, i, pair
+
+    def filter_and_preavg(self, pipeline, dframe): 
+        pdata = {}
+        ndata = {}
+        i = 0
         for index, row in dframe.iterrows():
-            if not self.should_filter or (any(str(lkey) in row["Landmark_key"] for lkey in self.lkeys)): 
-                l = row["Raw_data"].replace("]", "").replace("[", "").split(",")
-                l = [float(i) for i in l]
-                pair = row["Landmark_key"]
-                self.plot_tracker[pair] = {
-                    0 : {
-                        "type" : "Entire pipeline", 
-                        "before" : l, 
-                        "after" : []
-                    }
-                }
-                n, p, i = self.process_signal(l, pipeline, pair)
-     
+            if self.should_filter:
+                if (any(str(lkey) == row["Landmark_key"] for lkey in self.filter_lkeys)): 
+                    p, n, i, pair = self.process_row(row, pipeline)
+                    pdata[pair] = p
+                    ndata[pair] = n 
+                    
+            else: 
+                p, n, i, pair = self.process_row(row, pipeline)
                 pdata[pair] = p
                 ndata[pair] = n 
-        self.last_step = self.last_step + i + 1
+
+        if len(pipeline) > 0: 
+            self.last_step = self.last_step + i + 1
+       
         return pdata, ndata
          
                 
     def process_signal(self, raw, pipeline, pair): 
         normed_raw = self.min_max_norm(raw)
         curr_signal = raw
-      
+        
+        i = 0
         for i, ptype in enumerate(pipeline):
             self.plot_tracker[pair][self.last_step + i + 1] = {"type" : ptype, "before":curr_signal}
             if ptype == "moving_average": 
@@ -101,8 +125,7 @@ class SignalProcessor:
                 print("please revisit configuration file and enter a valid signal processing type")
             self.plot_tracker[pair][self.last_step + i + 1]["after"] = curr_signal
        
-        
-        return normed_raw, curr_signal, i
+        return curr_signal, normed_raw, i
         
     
     def butterworth(self, original):
@@ -135,39 +158,26 @@ class SignalProcessor:
         return d_scaled
 
 
-    def avg_one_pair(self, pairs_toavg, row1_data, pd_df):
-        averaged = row1_data
+    def avg_one_pair(self, pairs_toavg, data, lkey):
+        averaged = data[str(lkey)]
         for toavg in pairs_toavg: 
-            nextrow_index = pd_df.index[pd_df["Landmark_key"] == str(toavg)]
-            nextrow_data = pd_df["Processed"].loc[nextrow_index].values[0]
-             
+            nextrow_data = data[str(toavg)]
             averaged = [(g + h) / 2 for g, h in zip(averaged, nextrow_data)]
 
         return averaged
 
 
-    def avg_across_signals(self, data, postavg_process, target_pairs, pairs_for_avg):
+    def avg_across_signals(self, original):
         res = {}
-        for fname, pd_df in data.items(): 
-            avg_data = {"Landmark_key" : [], "Distances" : [], "Normalized" : [], "Processed" : []}
-        
-            for index, row in pd_df.iterrows(): 
-                if any(row["Landmark_key"] == str(pair) for pair in target_pairs):
-                    
-                    tup = eval(row["Landmark_key"].replace("(", "").replace(")", ""))
-                    toavg_pairs = pairs_for_avg[tup]
-                    averaged = self.avg_one_pair(toavg_pairs, row["Processed"], pd_df)
-                
-                    normed, p = self.process_signal(averaged, postavg_process)
-    
-                    avg_data["Landmark_key"].append(str(tup))
-                    avg_data["Distances"].append(row["Distances"])
-                    avg_data["Normalized"].append(row["Normalized"])
-                    avg_data["Processed"].append(p)
-                    
-            avg_df = pd.DataFrame(avg_data)
-            res[fname] = avg_df
-                    
+        self.last_step += 1
+        for lkey, lkeys in self.pairs_to_avg.items():
+            res[str(lkey)] = self.avg_one_pair(lkeys, original, lkey)
+            self.plot_tracker[str(lkey)][self.last_step] = {
+                "type" : "avg_across_signals", 
+                "before" : original[str(lkey)], 
+                "after" : res[str(lkey)]
+            }
+
         return res
 
 

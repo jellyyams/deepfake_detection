@@ -419,7 +419,7 @@ class MPFeatureExtractor(object):
         Tracks landmark data where two or more landmark coordinates are needed, for instance tracking pairwise distances
         """
         if "pairwise_distances" in self.output_data:
-            for pair in self.pairs_to_plot:
+            for pair in self.pairs_to_analyze:
                 coord1 = self.curr_frame_aligned_landmarks_3d[pair[0]]
                 coord2 = self.curr_frame_aligned_landmarks_3d[pair[1]]
                 if (pair[0] in self.landmarks["upper"] and pair[1] in self.landmarks["upper"]) or (pair[0] in self.landmarks["lower"] and pair[1] in self.landmarks["lower"]):
@@ -541,7 +541,7 @@ class MPFeatureExtractor(object):
         return False  
 
     
-    def process_video(self):
+    def run(self):
         """
         main function that runs this class
         """

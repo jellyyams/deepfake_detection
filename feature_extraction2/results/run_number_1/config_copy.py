@@ -17,7 +17,7 @@ Directories = {
 VideoProcessing = {
    "initial detect?" : True,
    "draw all landmarks?" : True,
-   "generate video?": True,
+   "generate video?": False,
    "output data" : ["pairwise_distances", "anchor_distances"],
    "anchor landmark" : 5, 
    "display dim" : 800, 
@@ -53,8 +53,8 @@ VideoProcessing = {
 
 SignalProcessing = {
    "files" : ["kelly_front_s2_v1/", "krithika_front_s2_v1/"], 
-   "datatype" : ["landmark_groups", "landmark_single", "coords"],  
-   "pipeline" : ["moving_average", "avg_across_signals", "butterworth"], 
+   "datatype" : "landmark_groups",  
+   "pipeline" : ["moving_average"], 
    "moving avg window" : 5, 
    "butter settings" : {
       "fs" : 30, 

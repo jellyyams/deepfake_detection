@@ -68,7 +68,7 @@ class Driver:
                 draw_anchor_target_connector = self.vidp_settings["draw anchor target connector?"],
                 output_directory = self.output_dir + "videos/")
 
-            landmark_coords, landmark_single, landmark_groups = app.process_video()
+            landmark_coords, landmark_single, landmark_groups = app.run()
             pathsplit = vid.split('/')
             self.write_data_to_csv(landmark_coords, pathsplit[1], "coords", self.dirs["vid data output"])
             self.write_data_to_csv(landmark_single, pathsplit[1], "landmark_single", self.dirs["vid data output"])
@@ -87,10 +87,14 @@ class Driver:
             self.sigp_settings["pairs to avg"])
  
         for dirname in self.sigp_settings["files"]:
-            for fname in self.sigp_settings["datatype"]:
-                dframe = self.read_data_from_csv(dirname, fname, self.dirs["vid data output"])
-         
-                signalprocessor.run(dframe, dirname, fname)     
+    
+            dframe = self.read_data_from_csv(dirname, self.sigp_settings["datatype"], self.dirs["vid data output"])
+            processed, normed = signalprocessor.run(dframe, dirname, self.sigp_settings["datatype"])    
+            path = dirname.replace("/","")
+            self.write_data_to_csv(processed, path, "processed", self.dirs["sig processing data output"]) 
+            self.write_data_to_csv(processed, path, "normed", self.dirs["sig processing data output"]) 
+
+
     
     def run_signal_comparison(self): 
         for sim in self.sim_test_cases: 
