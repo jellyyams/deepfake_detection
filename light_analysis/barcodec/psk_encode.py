@@ -11,13 +11,11 @@ class BorderType(Enum):
 corner_markers = False
 border_type = BorderType.GRID
 
-N = 15 #size of one cell in SLM pixels
-max_info_cells_W = None
-max_info_cells_H = None
-buffer_space = 15  #num pixels (SLM) between cells
-cell_color = (0, 0, 60)
-border_width = 15 #must be leq N
-border_buffer_space = 15
+N = 30 #size of one cell in SLM pixels
+buffer_space = 30  #num pixels (SLM) between cells
+cell_color = (0, 0, 140)
+border_width = 30 #must be leq N
+border_buffer_space = 30
 
 if cell_color[0] == 0:
     corner_marker_color = (255, 0, 0)
@@ -32,23 +30,15 @@ if corner_markers:
     max_info_cells_W = int((W - 2*N - 2*border_width - border_buffer_space) / (N + buffer_space))
     max_info_cells_H = int((H - 2*N - 2*border_width - border_buffer_space) / (N + buffer_space))
 
-    print(max_info_cells_H)
-    print(max_info_cells_W)
-
     max_border_cells_W = int((W -2*N) / (border_width + border_buffer_space))
     max_border_cells_H = int((H -2*N + border_buffer_space) / (border_width + border_buffer_space))
-    print(max_border_cells_H)
-    print(max_border_cells_W)
 else:
     max_info_cells_W = int((W - 2*border_width - border_buffer_space) / (N + buffer_space))
     max_info_cells_H = int((H - 2*border_width - border_buffer_space) / (N + buffer_space))
-    print(max_info_cells_W)
-    print(max_info_cells_H)
+
     max_border_cells_W = int((W + border_buffer_space) / (border_width + border_buffer_space))
     max_border_cells_H = int((H + border_buffer_space)/ (border_width + border_buffer_space))
-    print(max_border_cells_H)
-    print(max_border_cells_W)
-
+   
 max_bits = max_info_cells_H * max_info_cells_W 
 
 
@@ -145,14 +135,14 @@ def add_corner_markers(frame):
 #build test bitstring to encode
 input_bitstring = ''
 
-for i in range(5):
-    input_bitstring += '01100100111001101001000010010100011101'
+# for i in range(5):
+#     input_bitstring += '01100100111001101001000010010100011101'
 
 # for i in range(5):
 #     input_bitstring += '0110010111010101101'
 
-# for i in range(3):
-#     input_bitstring += '0110011101'
+for i in range(3):
+    input_bitstring += '0110011101'
 
 if len(input_bitstring) > max_bits:
     print("Input bitstring too long.")

@@ -36,13 +36,12 @@
 
 TARGET = display
 CC=gcc
-CFLAGS=-O3 -std=gnu89
-DEPS = open_bmp.h display_core.h display_app.h
-OBJ = open_bmp.c display_core.c display_app.c
+CFLAGS=-O3 -std=gnu89 -pthread
+DEPS = open_bmp.h display_core.h display_app.h slm_server.h
+OBJ = open_bmp.c display_core.c display_app.c slm_server.c driver.c
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
-
 
 all: $(OBJ)
 	gcc -o $(TARGET) $^ $(CFLAGS)

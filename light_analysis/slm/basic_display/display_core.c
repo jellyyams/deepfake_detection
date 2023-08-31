@@ -93,38 +93,6 @@ int setup_fb(struct fb_fix_screeninfo *fix_info, struct fb_var_screeninfo *var_i
 }
 
 
-int setup_GPIO() {
-	DIR *dir_out, *dir_in;
-	dir_out = opendir("/sys/class/gpio/gpio"GPIO_OUT);
-	dir_in = opendir("/sys/class/gpio/gpio"GPIO_IN);
-
-	if (!dir_out) { // if pin isn't setup as GPIO need to do that
-		if (DEBUG) {
-			printf("Setting up GPIO"GPIO_OUT" as output\n");
-		}
-		system("echo "GPIO_OUT" > /sys/class/gpio/export"); // setup pin as gpio
-		usleep(200000); // wait for pin to finish setting up
-		
-	} 
-
-	if (!dir_in) { // if pin isn't setup as GPIO need to do that
-		if (DEBUG) {
-			printf("Setting up GPIO"GPIO_IN" as input\n");
-		}
-		system("echo "GPIO_IN" > /sys/class/gpio/export"); // setup pin as gpio
-		usleep(200000); // wait for pin to finish setting up
-	} 
-
-	system("echo out > /sys/class/gpio/gpio"GPIO_OUT"/direction"); // setup pin GPIO_OUT as output
-	system("echo in > /sys/class/gpio/gpio"GPIO_IN"/direction"); // setup pin GPIO_IN as input
-	
-	closedir(dir_out);
-	closedir(dir_in);
-
-	return EXIT_SUCCESS;
-}
-
-
 int clear_screen(uint8_t* fbp, uint8_t* bbp, struct fb_var_screeninfo* var_info, struct fb_fix_screeninfo* fix_info, long screensize) {
 	long x, y, location;
 	long x_max = var_info->xres_virtual;
@@ -148,21 +116,23 @@ int clear_screen(uint8_t* fbp, uint8_t* bbp, struct fb_var_screeninfo* var_info,
 
 
 // Releases appropriate files
-int cleanup(int fb, uint8_t *fbp, uint8_t *buffer, long screensize, int restart_x, int video_mode, char **image_names) {
+int cleanup(int fb, uint8_t *fbp, uint8_t **buffers, int num_frames, long screensize, int video_mode, char **image_names) {
 	int i = 0;
 	
 	if (munmap(fbp, screensize) == EXIT_FAILURE) {
 		printf("Unable to unmap fbp\n");
 	}
-	if (munmap(buffer, screensize) == EXIT_FAILURE) {
-		printf("Unable to unmap buffer\n");
+
+	for (i = 0; i < num_frames; i++) {
+		if (munmap(buffers[i], screensize) == EXIT_FAILURE) {
+			printf("Unable to unmap buffer\n");
+		}	
 	}
+	
 	if (close(fb) == EXIT_FAILURE) {
 		printf("Unable to close frame buffer\n");
 	}
-	if (restart_x == 1) { // should restart x server
-		system("sudo service lightdm start");
-	}
+
 	if (!video_mode) { // reset to video mode
 		system("i2cset -y 2 0x1b 0x7e 0x00 0x00 0x00 0x00 i"); // enable temporal dithering
 		system("i2cset -y 2 0x1b 0x50 0x00 0x00 0x00 0x07 i"); // enable automatic gain control
@@ -181,7 +151,6 @@ inline uint32_t pixel_color(uint8_t r, uint8_t g, uint8_t b, struct fb_var_scree
 	return (r<<var_info->red.offset) | (g<<var_info->green.offset) | (b<<var_info->blue.offset);
 
 }
-
 
 int test_loop(uint8_t* fbp, uint8_t* bbp, struct fb_var_screeninfo* var_info, struct fb_fix_screeninfo* fix_info, int delay, int repeat, long screensize, int trig_in) {
 	int i, ii;

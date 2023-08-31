@@ -5,46 +5,10 @@ import seaborn as sns
 import tqdm 
 from sklearn.preprocessing import minmax_scale
 import sys
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN, AgglomerativeClustering, Birch, OPTICS, AffinityPropagation
 from colordict import ColorDict
-
-def loadVideo(video_path, colorspace='ycrcb', downsamples=0, crop_coords=None):
-    """
-    From Hussem Ben Belgacem's Eulerian Video Magnification implementation: 
-    https://github.com/hbenbel/Eulerian-Video-Magnification/
-    """
-    if crop_coords is not None and downsamples > 0:
-        print("CAREFUL, you are both cropping and downsampling. Do you really want to do this?")
-
-    image_sequence = []
-    video = cv2.VideoCapture(video_path)
-    fps = video.get(cv2.CAP_PROP_FPS)
-
-    while video.isOpened():
-        ret, frame = video.read()
-        if ret is False:
-            break
-        if downsamples > 0:
-            for i in range(downsamples):
-                frame = cv2.pyrDown(frame)
-
-        if crop_coords is not None:
-            left = crop_coords[0]
-            right = crop_coords[1]
-            top = crop_coords[2]
-            bottom = crop_coords[3]
-            frame = frame[top:bottom+1, left:right+1]
-        
-        if colorspace == 'yuv':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
-        elif colorspace == 'ycrcb':
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
-  
-        image_sequence.append(frame[:, :, :])
-
-    video.release()
-
-    return np.asarray(image_sequence), fps
+from itertools import cycle, islice
+from barcode_utils import find_barcode_rows, loadVideo
 
 gaussian_kernel = (
     np.array(
@@ -121,7 +85,7 @@ def moving_average(a, axis, n=3):
     return ret[n - 1:] / n
 
 
-def fftVideo(images, fps, low_freq, high_freq, colorspace = 'ycrcb', heatmap_norm=False, output_suffix=None, gaussian_pyr_level=0):
+def fftVideo(images, fps, low_freq, high_freq, colorspace = 'ycrcb', heatmap_norm=False, gaussian_pyr_level=0):
     if gaussian_pyr_level > 0:
         images = getGaussianPyramids(
                     images=images,
@@ -171,12 +135,7 @@ def fftVideo(images, fps, low_freq, high_freq, colorspace = 'ycrcb', heatmap_nor
     png_heatmap_chan2 = png_heatmap_chan2.astype("uint8")
     png_heatmap_chan3 = minmax_scale(heatmap_chan3.flatten()).reshape(heatmap_chan3.shape) * 255
     png_heatmap_chan3 = png_heatmap_chan3.astype("uint8")
-
-    if output_suffix:
-        cv2.imwrite(f'heatmap_chan1_{output_suffix}_{colorspace}.png', png_heatmap_chan1)
-        cv2.imwrite(f'heatmap_chan2_{output_suffix}_{colorspace}.png', png_heatmap_chan2)
-        cv2.imwrite(f'heatmap_chan3_{output_suffix}_{colorspace}.png', png_heatmap_chan3)
-        
+      
     return png_heatmap_chan1, png_heatmap_chan2, png_heatmap_chan3
 
 
@@ -192,17 +151,87 @@ def downsamplesd_to_og_coords(coord, downsamples):
     return og
 
 
-def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples, target_channel, padding):
+def plot_dbscan_cluster_results(clusters, X):
+    labels = clusters.labels_
+    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    n_noise_ = list(labels).count(-1)
+    print("Estimated number of clusters: %d" % n_clusters_)
+    print("Estimated number of noise points: %d" % n_noise_)
+    unique_labels = set(labels)
+    core_samples_mask = np.zeros_like(labels, dtype=bool)
+    core_samples_mask[clusters.core_sample_indices_] = True
+
+    colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(unique_labels))]
+    for k, col in zip(unique_labels, colors):
+        if k == -1:
+            # Black used for noise.
+            col = [0, 0, 0, 1]
+
+        class_member_mask = labels == k
+
+        xy = X[class_member_mask & core_samples_mask]
+        plt.plot(
+            xy[:, 0],
+            xy[:, 1],
+            "o",
+            markerfacecolor=tuple(col),
+            markeredgecolor="k",
+            markersize=14,
+        )
+
+        xy = X[class_member_mask & ~core_samples_mask]
+        plt.plot(
+            xy[:, 0],
+            xy[:, 1],
+            "o",
+            markerfacecolor=tuple(col),
+            markeredgecolor="k",
+            markersize=6,
+        )
+
+    plt.title(f"Estimated number of clusters: {n_clusters_}")
+    plt.show()
+
+
+def plot_cluster_results(clusters, X):
+    y_pred = clusters.labels_.astype(int)
+    colors = np.array(
+            list(
+                islice(
+                        cycle(
+                            [
+                                "#377eb8",
+                                "#ff7f00",
+                                "#4daf4a",
+                                "#f781bf",
+                                "#a65628",
+                                "#984ea3",
+                                "#999999",
+                                "#e41a1c",
+                                "#dede00",
+                            ]
+                        ),
+                        int(max(y_pred) + 1),
+                    )
+                )
+            )
+    
+    # add black color for outliers (if any)
+    colors = np.append(colors, ["#000000"])
+    plt.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
+    plt.show()
+
+def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples, target_channel, padding, cluster_filtering=False):
     """
     Perform rough boundary analysis on downsampled version of video in order to identify region to run
     analysis on with full resolution
     """
-    min_contour_area = 0
 
     images, fps =  loadVideo(video_path, colorspace=colorspace, downsamples=downsamples)
-    print(images.shape)
-    plt.plot(images[:,296,181,2])
-    plt.show()
+    #print(images.shape)
+    # #(569, 587)
+    # plt.plot(images[:,105,215,2])
+    # plt.show()
     chan1, chan2, chan3  = fftVideo(images, fps, low_freq, high_freq, colorspace=colorspace)
     
     
@@ -223,7 +252,7 @@ def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples
     #target_chan_th = cv2.adaptiveThreshold(target_chan,255,cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 399, 0)
     # kernel = np.ones((3, 3), np.uint8) #must use odd kernel to avoid shifting
     # target_chan_th = cv2.erode(target_chan_th, kernel, iterations=2)
-  
+   
     contours,hierarchy = cv2.findContours(target_chan_th, 1, 2)
     vis_target_chan_th = cv2.cvtColor(target_chan_th, cv2.COLOR_GRAY2BGR)
     vis_target_chan_th= cv2.drawContours(vis_target_chan_th, contours, -1, (0,255,0), 1)
@@ -235,33 +264,51 @@ def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples
     for i, cnt in enumerate(contours):
         x, y, w, h = cv2.boundingRect(cnt)
         contour_centers.append([int(x + w/2), int(y + h/2)])
-        if w * h < min_contour_area:
-            continue
         vis_target_chan_th = cv2.rectangle(vis_target_chan_th, (x, y), (x+w, y+h), (0, 0, 255), 1)
-        if x + w > right:
-            right = x + w
-        if x < left: 
-            left = x
-        if y + h > bottom:
-            bottom = y + h
-        if y < top: 
-            top = y
+        if cluster_filtering == False:
+            if x + w > right:
+                right = x + w
+            if x < left: 
+                left = x
+            if y + h > bottom:
+                bottom = y + h
+            if y < top: 
+                top = y
     
-    contour_centers =  np.array(contour_centers)
-    clustering = DBSCAN(eps=3, min_samples=2).fit(contour_centers)
-    print(contour_centers)
-    print(clustering.labels_)
-    colors = ColorDict()
-    color_keys = list(colors.keys())
-    for i in range(contour_centers.shape[0]):
-        cv2.circle(vis_target_chan_th, contour_centers[i], 2, colors[color_keys[clustering.labels_[i]]], -1)
+    cv2.imshow("Contours", vis_target_chan_th)
+
+    if cluster_filtering == False:
+        vis_target_chan_th = cv2.rectangle(vis_target_chan_th, (left, top), (right, bottom), (255, 0, 0), 1)
+        cv2.imshow('Boundaries without contour filtering', vis_target_chan_th)
+        cv2.waitKey(0)
+
+    if cluster_filtering:   
+        contour_centers =  np.array(contour_centers)
+        clustering = DBSCAN(eps=50).fit(contour_centers)
+        plot_dbscan_cluster_results(clustering, contour_centers)
+        labels = clustering.labels_
+        labels_unique, counts = np.unique(labels[labels>=0], return_counts=True)
+        labels_unique = labels_unique[np.argsort(-counts)]
+        top_cluster_label = labels_unique[0]
+
+        for i, cnt in enumerate(contours):
+            x, y, w, h = cv2.boundingRect(cnt)
+            if labels[i] == top_cluster_label:
+                if x + w > right:
+                    right = x + w
+                if x < left: 
+                    left = x
+                if y + h > bottom:
+                    bottom = y + h
+                if y < top: 
+                    top = y
         
+        vis_target_chan_th = cv2.rectangle(vis_target_chan_th, (left, top), (right, bottom), (255, 0, 0), 1)
+        cv2.imshow('Boundaries with clustering contour filtering', vis_target_chan_th)
+        cv2.waitKey(0)
+        
+        #find_barcode_rows(contour_centers, target_chan_th, epsilon=1)
     
-    vis_target_chan_th = cv2.rectangle(vis_target_chan_th, (left, top), (right, bottom), (255, 0, 0), 1)
-
-    cv2.imshow('Identified crops', vis_target_chan_th)
-    cv2.waitKey(0)
-
     #convert downsamplesd crop coordinates to coordinates in original image
     left_crop_og = downsamplesd_to_og_coords(left, downsamples) - padding
     right_crop_og = downsamplesd_to_og_coords(right, downsamples) + padding
@@ -271,27 +318,48 @@ def get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples
     return [left_crop_og, right_crop_og, top_crop_og, bottom_crop_og]
 
 
-def generate_heatmap(video_path, low_freq, high_freq, colorspace='ycrcb', target_channel=1, padding=30, downsamples=1):
-
+def generate_heatmap(video_path, low_freq, high_freq, colorspace='ycrcb', target_channel=1, padding=30, downsamples=1, output_folder=None):
+    # output_folder = 'aug28_heatmap_temp'
     vid_name = video_path.split('/')[-1].split('.')[0]
 
     cap_temp = cv2.VideoCapture(video_path) 
     W, H = cap_temp.get(3), cap_temp.get(4)
+    print("Input video resolution (W, H): {}, {}".format(W, H))
     if W*H > 250000: #need to do two rounds of FFT
         #determine number of pyramidal downsampless need to get resolution to acceptable number
         downsamples = 1
-        while (W / 2) * (H / 2) >  250000:
+        new_W = W / 2
+        new_H = H / 2
+        while (new_W / 2) * (new_H / 2) >  250000:
             downsamples += 1
+            new_W /= 2
+            new_H /= 2
         print("Running initial FFT with frames downsamples x{} to identify crop boundaries.".format(downsamples))
-        crop_coords = get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples, target_channel, padding)
+        crop_coords = get_crop_boundaries(video_path, colorspace, low_freq, high_freq, downsamples, target_channel, padding, cluster_filtering=True)
         
         #now perform fft on crop of original image
+        print("Performing second (and final) FFT on cropped region.")
         images, fps =  loadVideo(video_path, colorspace=colorspace, crop_coords=crop_coords)
-        _ , _ , _  = fftVideo(images, fps, low_freq, high_freq, colorspace=colorspace, output_suffix=vid_name)
+        heatmap_chan1, heatmap_chan2, heatmap_chan3 = fftVideo(images, fps, low_freq, high_freq, colorspace=colorspace)
+        
+        if output_folder:
+            cv2.imwrite(f'{output_folder}/heatmap_chan1_{vid_name}_{colorspace}.png', heatmap_chan1)
+            cv2.imwrite(f'{output_folder}/heatmap_chan2_{vid_name}_{colorspace}.png', heatmap_chan2)
+            cv2.imwrite(f'{output_folder}/heatmap_chan3_{vid_name}_{colorspace}.png', heatmap_chan3)
+        
+        print("Heatmap crop coords: ", crop_coords)
+        return heatmap_chan1, heatmap_chan2, heatmap_chan3, crop_coords
     else:
+        print("Performing first (and only) FFT.")
         images, fps =  loadVideo(video_path, colorspace=colorspace)
-        _ , _ , _  = fftVideo(images, fps, low_freq, high_freq, colorspace=colorspace, output_suffix=vid_name)
-       
+        heatmap_chan1, heatmap_chan2, heatmap_chan3  = fftVideo(images, fps, low_freq, high_freq, colorspace=colorspace, output_folder=output_folder)
 
-generate_heatmap('test_vids/aug27_input_videos/r60_g0_b0_N30_b30_s2_05Hz.MP4', 0.45, .55 , target_channel=1, padding=30, colorspace='ycrcb')
+        if output_folder:
+            cv2.imwrite(f'{output_folder}/heatmap_chan1_{vid_name}_{colorspace}.png', heatmap_chan1)
+            cv2.imwrite(f'{output_folder}/heatmap_chan2_{vid_name}_{colorspace}.png', heatmap_chan2)
+            cv2.imwrite(f'{output_folder}/heatmap_chan3_{vid_name}_{colorspace}.png', heatmap_chan3)
+        
+        return heatmap_chan1, heatmap_chan2, heatmap_chan3, None
+
+# generate_heatmap('test_vids/aug27_input_videos/r60_g0_b0_N30_b30_s2_05Hz.MP4', .45, .55, target_channel=1, padding=30, colorspace='ycrcb', output_folder='aug28_heatmap_temp')
 

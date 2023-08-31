@@ -70,13 +70,13 @@ int main(int argc, char** argv) {
 	repeat = (int)strtol(argv[4],NULL,10);
 	printf("Repeat is %d\n", repeat);
 	
-	// Setup framebuffer 
+	// Set up framebuffer 
 	if (setup_fb(&fix_info, &var_info, &fb, &screensize, &fbp, video_mode) == EXIT_FAILURE) {
 		printf("Unable to setup framebuffer\n");
 		return EXIT_FAILURE;
 	}
 
-	// Malloc bitmap buffers
+	// Malloc and set up bitmap buffers
 	buffers = (uint8_t**)malloc(num_frames * sizeof(uint8_t*));
 	for (i = 0; i < num_frames; i++) {
 		buffers[i] = (uint8_t*)malloc(screensize* sizeof(uint8_t));
@@ -92,13 +92,13 @@ int main(int argc, char** argv) {
 	
 	display_images(image_names, num_images, fbp, buffers, &var_info, &fix_info, delay, repeat, screensize); // Display loaded images
 
-	// // Cleanup open files
-	// if (cleanup(fb, fbp, buffer, screensize, restart_x, video_mode, image_names) == EXIT_FAILURE){
-	// 	printf("Error cleaning up files\n");
-	// 	return EXIT_FAILURE;
-	// }
+	// Cleanup open files
+	if (cleanup(fb, fbp, buffers, num_frames, screensize, video_mode, image_names) == EXIT_FAILURE){
+		printf("Error cleaning up files\n");
+		return EXIT_FAILURE;
+	}
 
-	// return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
 
 
@@ -118,20 +118,26 @@ int buffer_images(char **image_names, int num_frames, uint8_t** buffers, struct 
 	}
 
 	for (i = 0; i < num_frames; i++) {
-			// Open image and ensure it's successful. Inefficent to load file everytime but fine at BeagleBone's low effective video framerates
-			if (open_bmp(*(image_names+i), img) == EXIT_FAILURE) {
-				return EXIT_FAILURE;
+		// Open image and ensure it's successful. Inefficent to load file everytime but fine at BeagleBone's low effective video framerates
+		if (open_bmp(*(image_names+i), img) == EXIT_FAILURE) {
+			return EXIT_FAILURE;
+		}
+
+		// Transfer image structure to the buffer
+		for (y=0; y<y_max; y++) {
+			for (x=0; x<x_max; x++) {
+				location = (x+var_info->xoffset) * (var_info->bits_per_pixel / 8) + (y + var_info->yoffset) * fix_info->line_length; // offset where we write pixel value
+				pix = pixel_color(img[y][x].r, img[y][x].g, img[y][x].b, var_info); // get pixel in correct format
+				*((uint32_t*)(buffers[i] + location)) = pix; // write pixel to buffer	
 			}
-	
-			// Transfer image structure to the buffer
-			for (y=0; y<y_max; y++) {
-				for (x=0; x<x_max; x++) {
-					location = (x+var_info->xoffset) * (var_info->bits_per_pixel / 8) + (y + var_info->yoffset) * fix_info->line_length; // offset where we write pixel value
-					pix = pixel_color(img[y][x].r, img[y][x].g, img[y][x].b, var_info); // get pixel in correct format
-					*((uint32_t*)(buffers[i] + location)) = pix; // write pixel to buffer	
-				}
-			}
+		}
 	}
+
+	// Cleanup image memory
+	for (i = 0; i < IMG_Y; i++) {
+		free(img[i]);
+	}
+	free(img);
 }
 
 int display_images(char **image_names, int num_images, uint8_t* fbp, uint8_t** buffers, struct fb_var_screeninfo* var_info, struct fb_fix_screeninfo* fix_info, int delay, int repeat, long screensize) {
@@ -152,30 +158,9 @@ int display_images(char **image_names, int num_images, uint8_t* fbp, uint8_t** b
 	}
 
 
-	// Allocate image structure which will be used to load images
-	// img = (pixel**)malloc(IMG_Y * sizeof(pixel*));
-	// for (i = 0; i < IMG_Y; i++) {
-	// 	img[i] = (pixel*)malloc(IMG_X * sizeof(pixel));
-	// }
-
-
 	// Will loop through displaying all images
 	for (ii = 0; ii < repeat; ii++) {
 		for (i = 0; i < num_images; i++) {
-			// // Open image and ensure it's successful. Inefficent to load file everytime but fine at BeagleBone's low effective video framerates
-			// if (open_bmp(*(image_names+i), img) == EXIT_FAILURE) {
-			// 	return EXIT_FAILURE;
-			// }
-	
-			// // Transfer image structure to the buffer
-			// for (y=0; y<y_max; y++) {
-			// 	for (x=0; x<x_max; x++) {
-			// 		location = (x+var_info->xoffset) * (var_info->bits_per_pixel / 8) + (y + var_info->yoffset) * fix_info->line_length; // offset where we write pixel value
-			// 		pix = pixel_color(img[y][x].r, img[y][x].g, img[y][x].b, var_info); // get pixel in correct format
-			// 		*((uint32_t*)(bbp + location)) = pix; // write pixel to buffer	
-			// 	}
-			// }
-			
 			// Wait until delay is over
 			if (!(ii == 0 && i == 0)) { // as long as it's not the first time through the loop we have to wait
 				do {
@@ -219,15 +204,9 @@ int display_images(char **image_names, int num_images, uint8_t* fbp, uint8_t** b
 		printf("Average difference: %.1fms\n\n", (delay-totalusecs/repeat/num_images)/1000.0);
 	}
 
-	// // Cleanup image memory
-	// for (i = 0; i < IMG_Y; i++) {
-	// 	free(img[i]);
-	// }
-	// free(img);
+	clear_screen(fbp, buffers[0], var_info, fix_info, screensize);
 
-	// clear_screen(fbp, bbp, var_info, fix_info, screensize);
-
-	// return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
 
 
