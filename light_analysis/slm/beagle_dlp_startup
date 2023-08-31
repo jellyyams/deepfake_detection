@@ -1,0 +1,131 @@
+
+Attaching the EVM to beaglebone:
+Attach ground j3 pin to 1 of EVM and VCC j3 pin to pin 7 of EVM.
+
+
+
+Connect to wifi via USB wifi dongle
+- connmanctl 
+- enable wifi
+- scan wifi 
+- services (get long name of LAN here)
+- agent on
+- connect <long name>
+- quit and ping something to check 
+*Note: Need to plug this specific dongle in AFTER powering on beagleboard in order for it to work. 
+
+
+Install pip for Python2.7
+- sudo apt update
+- curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
+- sudo python2 get-pip.py
+
+
+Install setuptools
+- python2 -m pip install setuptools
+
+Install DLP cape
+tar -xvf dlp_lightcrafter-1.0.19.tar.gz
+Cd dlp_lightcrafter-1.0.19
+Sudo python setup.py install 
+
+Install mplayer 
+- First, need to install software-properties common to allow use of command add-apt-repository
+sudo apt update
+sudo apt install software-properties-common
+- sudo apt-get update
+- sudo add-apt-repository universe
+- sudo apt update
+- sudo apt install mplayer
+
+
+
+Install xinit: sudo apt-get install -y xinit
+In /etc/X11/Xwrapper.config, change allowed_users from console to anybody
+
+In a new terminal enter, sudo xinit -- :0 or sudo xinit -- :2, and keep that terminal open. This creates a framebuffer that will be used
+by the DLP EVM. 
+In the old terminal: play the video with mplayer, use the structured light examples, etc. Whatever you want.
+Note that the structured light example will still run even if you haven't initialized a framebuffer with the xinit command,
+but the displayed images might have a cursor in them, because it is using the framebuffer associated with the Desktop display (I think), rather
+than the special, fresh fb you could create with xinit. 
+
+
+To use the structured light code, first modiy makefile in structured_light dir:
+Change the line "CFLAGS=-O3" to "CLFAGS=-O3 -std=gnu89" (https://e2e.ti.com/support/dlp-products-group/dlp/f/dlp-products-forum/667207/faq-dlp2000-dlp-lightcrafter-display-2000-structured-light-code)
+make all
+
+If loading custom bitmaps to display, they must be 640x360 (this is the DMD resolution)
+8002 -> 0280 = 640
+6801 -> 0168 = 360
+
+
+
+Delay between placement of two consecutive images in frame buffer
+(which should be roughly equal to the delay between the display of consecutive images)
+typically is no lower than  144110 us -> 0.14411. Even if you increase the framerate option, this doesn't seem to change much. 
+Note that this is merely the delay between a CHANGE. The current image will continuously stay on until
+it is changed. Thus there is no "flicker"?
+
+Copy public key file to beagle to ssh/scp without requiring password:
+ssh-copy-id remote_username@remote_server_ip_address
+(Generate public key on local computer if don't already have one)
+
+
+Install miniconda:
+(courtesy of https://stackoverflow.com/questions/39371772/how-to-install-anaconda-on-raspberry-pi-3-model-b/56852714#56852714)
+
+wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-armv7l.sh
+sudo md5sum Miniconda3-latest-Linux-armv7l.sh
+sudo /bin/bash Miniconda3-latest-Linux-armv7l.sh
+
+Accept the license agreement with yes
+When asked, change the install location: /home/debian/miniconda3
+
+Do you wish the installer to prepend the Miniconda3 install location to PATH in your /root/.bashrc ? yes
+Now add the install path to the PATH variable:
+sudo nano /home/debian/.bashrc
+Go to the end of the file .bashrc and add the following line:
+export PATH="/home/debian/miniconda3/bin:$PATH"
+Save the file and exit.
+To test if the installation was successful, open a new terminal or source the terminal, 
+and enter conda.
+
+sudo chown -R debian: /home/debian/miniconda3
+conda install anaconda-client
+
+*NOTE: these instructions alone will only allow conda envs with python <= 3.4
+Also, I just use pip anyway to install things. The conda environment is just to keep everything
+organized and isolated
+
+
+Note to self: currently numpy, opencv, etc. are only installed for python3 
+
+Note to self: Turns out, RGB = 000 does NOT correspond to no light. To get no light, have to "park"
+the module. Based on the below snooping, this command should accompish that:
+i2cset -y 0x1b 0x2D 0x00 0x00 0x00 0x01 i
+
+From /opt/scripts ... dlp:
+
+class DMDPark(IntEnum): 
+    """
+    DMD Park Control
+    """
+    UNPARK_THE_DMD = 0x00
+    PARK_THE_DMD = 0x01
+
+
+def DPP2607_Write_DmdPark(dmdpark):
+    """
+    Writes: DMD PARK.
+    DPP2607_Write_DmdPark(DWORD DMDPARK).
+    :type dmdpark: DMDPARK
+    :rtype: None
+    """
+    log(DEBUG< 'DPP2607_Write_DmdPark(%r_), dmdpark)
+    payload = [0x2D]
+    payload.extend(list(bytearray(struct.pack(">I", dmdpark & 0x1))))
+    i2c.write(payload)
+
+payload for parking: [45, 0, 0, 0, 1] -> [0x2D 0x00 0x00 0x00 0x01]
+
