@@ -1,0 +1,9 @@
+Comparing the following files: 
+hadleigh_front_s1_v2/,  hadleigh_low_s1_v2/,  hadleigh_right_threequarter_s1_v2/,  hadleigh_left_threequarter_s1_v2/,  
+
+Correlation cuttoff is 0.6
+landmark(s),  hadleigh_front_s1_v2_vs_hadleigh_low_s1_v2,  hadleigh_front_s1_v2_vs_hadleigh_right_threequarter_s1_v2,  hadleigh_front_s1_v2_vs_hadleigh_left_threequarter_s1_v2,  hadleigh_low_s1_v2_vs_hadleigh_right_threequarter_s1_v2,  hadleigh_low_s1_v2_vs_hadleigh_left_threequarter_s1_v2,  hadleigh_right_threequarter_s1_v2_vs_hadleigh_left_threequarter_s1_v2,  average
+(375, 409),     0.44888,       0.87234,       0.4812,       0.76135,       0.72176,       0.67189,       0.65957
+(270, 321),     0.40642,       0.85845,       0.50691,       0.7449,       0.70996,       0.67695,       0.6506
+(81, 181),     0.43494,       0.85303,       0.5449,       0.76024,       0.62591,       0.67529,       0.64905
+(0, 405),     0.44881,       0.86024,       0.44053,       0.76049,       0.54362,       0.58135,       0.60584

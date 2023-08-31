@@ -2,6 +2,7 @@ from driver_config import *
 from video_processing.mp_extractor import MPFeatureExtractor 
 from signal_processing.signalprocessor import SignalProcessor
 from signal_comparison.signalcomparator import SignalComparator
+from pipeline_comparison.pipelinecomparator import PipelineComparator
 from landmarks import Landmarks
 import os
 import csv
@@ -16,28 +17,43 @@ class Driver:
     ----------
     vidp_settings: dict
         A dict of configuration settings for running the video processing stage of pipeline
+    sigp_settings: dict
+        A dict of configuration settings for running the signal processing stage of pipeline
+    sigc_settings: dict
+        A dict of configuration settings for running the signal comparison stage of pipeline
+    pipelinec_settings: dict
+        A dict of configuration settings for running the pipeline comparison stage of pipeline
+    landmark_settings: dict
+        A dict of configuration settings for landmarks
     dirs: dict
         A dict of root directory names
     landmarks: Landmarks object 
         A Landmarks class object that contains attributes and methods for naming, sorting, and selecting landmarks
     output_dir: string
         The name of the root directory where all output files from one run will be stored 
+    root: string
+        The name of root directory where all run dirs are stored 
 
     Methods
     -------
     run_vid_processing(): Runs video processing for each video that's specified in config
-    write_data_to_csv(data, dirname, filename): Writes data into csv file between pipeline stages
-
+    run_signal_processing(): reads from video processing output data, runs SignalProcessor on raw data, and stores results in csv files
+    run_signal_comparison(): reads from either raw video processing output or signal processing data and runs test cases and/or makes plots
+    run_pipeline_comparison(): reads report.txt files generated during signal comparison test cases and creates box and whisker plot comparing pipelines 
+    write_data_to_csv(data, dirname, filename, rootfolder): Writes data into csv file between pipeline stages
+    read_data_from_csv(dirname, fname, rootfolder): Reads csv files into pandas dataframes and returns the dataframe
     
     '''
-    def __init__(self, vid_processing_settings, sig_processing_settings, sig_comparison_settings, directories, landmark_settings): 
+    def __init__(self, vid_processing_settings, sig_processing_settings, sig_comparison_settings, directories, landmark_settings, pipeline_comparison_settings): 
         self.vidp_settings =  vid_processing_settings
         self.sigp_settings = sig_processing_settings
         self.sigc_settings = sig_comparison_settings
+        self.pipelinec_settings = pipeline_comparison_settings
+        self.landmark_settings = landmark_settings
         self.dirs = directories
         self.landmarks = Landmarks()
-        self.landmark_settings = landmark_settings
-        self.output_dir = directories["output root"] + str(Run["number"]) + "/"
+        self.root = directories["root"]
+        self.output_dir = self.root + "run_number_" + str(Run["number"]) + "/"
         
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
@@ -50,7 +66,7 @@ class Driver:
         """
         videos = self.vidp_settings["videos"]
         root_path = self.dirs["video input root"]
-        landmarks = self.landmarks.get_landmarks_by_keyword(self.vidp_settings["key regions"])
+        landmarks = self.landmarks.get_landmarks_by_keyword(self.landmark_settings["key regions"])
         pairs_to_analyze = self.landmarks.generate_landmark_pairs(landmarks)
 
         for vid in videos: 
@@ -103,16 +119,19 @@ class Driver:
             print("completed signal processing on file: " + dirname)
     
     def run_signal_comparison(self): 
+        """
+        runs signal comparison on either raw video data or processed signal data
+        """
    
-        pdata = {}
-        odata = {}
-        ndata = {}
+        pdata = {} #processed data
+        odata = {} #original, unprocessed data
+        ndata = {} #normed data 
         for tc_name, testset in self.sigc_settings["test sets"].items():
             for k, v in testset.items():
                 for x in v: 
                     if x not in odata: 
                         odata[x] = self.read_data_from_csv(x, "landmark_groups", self.dirs["vid processing output"])
-                        if os.path.exists(self.output_dir + self.dirs["sig processing output"]): 
+                        if os.path.exists(self.output_dir + self.dirs["sig processing output"]): #if signal processing was run before this, then this dir exists 
                             pdata[x] = self.read_data_from_csv(x, "processed", self.dirs["sig processing output"])
                             ndata[x] = self.read_data_from_csv(x, "normed", self.dirs["sig processing output"])
 
@@ -139,7 +158,23 @@ class Driver:
         signalcomparator.run()
         
     def run_pipeline_comparison(self): 
-        pass
+        """
+        runs pipeline comparison across different run folders
+        """
+        output_dir = self.root + self.dirs["pipeline comparison output"]
+        pipelinecomparator = PipelineComparator(
+            self.pipelinec_settings["baw directories"], 
+            self.pipelinec_settings["fpaths"], 
+            self.root, 
+            output_dir, 
+            self.pipelinec_settings["baw xlabels"], 
+            self.pipelinec_settings["baw titles"], 
+            self.landmark_settings["lkeys to plot"], 
+            self.pipelinec_settings["scatter dirs"], 
+            self.pipelinec_settings["scatter markers"], 
+
+        )
+        pipelinecomparator.run()
 
     def write_data_to_csv(self, data, dirname, fname, rootfolder):
         """
@@ -168,14 +203,12 @@ class Driver:
 
         return df
      
-    
 def main(): 
-    driver = Driver(VideoProcessing, SignalProcessing, SignalComparison, Directories, LandmarkSettings)
+    driver = Driver(VideoProcessing, SignalProcessing, SignalComparison, Directories, LandmarkSettings, PipelineComparison)
     if Run["video processing?"]: driver.run_vid_processing()
     if Run["signal processing?"]: driver.run_signal_processing()
     if Run["signal comparison?"]: driver.run_signal_comparison()
     if Run["pipeline comparison?"]: driver.run_pipeline_comparison()
-    if Run["find best pairs?"]: driver.find_best_pairs()
 
 if __name__ == "__main__":
     main()

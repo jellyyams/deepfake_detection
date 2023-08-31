@@ -1,7 +1,3 @@
-'''
-A copy of this file is made into the corresponding "run_number_x" folder every single time driver.py is run 
-'''
-
 Run = {
    "number" : 3, #the number used to identify which run this is. Changing to new number will create a new directory for all the output in "./results"
    "video processing?" : False, 
@@ -11,7 +7,6 @@ Run = {
 }
 
 LandmarkSettings = {
-   "key regions" : ["Inner", "Outer", "1", "Corner", "0", "Eyebrow"], #the keywords used to determine which landmarks are included in analysis
    "lkeys to plot": [ #the lkeys that will be plotted at each stage, if plotting is turned on 
       (336, 384), 
       (296, 385), 
@@ -116,6 +111,7 @@ VideoProcessing = {
    "display dim" : 800, 
    "draw landmark nums?" : False, #draw landmark numbers on the annotated frame of output video
    "draw anchor target connector?" : False,#draw a line between the anchor and landmarks being analyzed
+   "key regions" : ["Inner", "Outer", "1", "Corner", "0", "Eyebrow"], #the keywords used to determine which landmarks are included in analysis
    "norm by" : "first_upper_lower_bbox", #vs "first_quarters_bbox" vs "face_bbox" vs "none" vs "upper_lower_bbox" vs "first_face_bbox" vs "first_upper_lower_bbox"
    "videos" : [ #all the video files being processed
       "Kelly_Front/kelly_front_s1_v2",

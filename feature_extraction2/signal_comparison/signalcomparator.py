@@ -83,7 +83,7 @@ class SignalComparator:
             for testcase_name, testcase_files in testset.items(): 
                 print("completed testcase: " + testcase_name)
                 
-                testcase_res = self.run_testcases(testcase_files, testcase_name, True, r_cutoff, ts_name)
+                testcase_res = self.run_testcases(testcase_files, testcase_name, finding_sim, r_cutoff, ts_name)
                 self.add_to_lkey_dict(testcase_res, testcase_name)
         
             best_performing, total_count, total_score = self.find_best_performing(self.tc_lkey_dict, finding_sim)
@@ -92,18 +92,16 @@ class SignalComparator:
             print("completed testcases for testset: " + ts_name)
 
     def update_diffsim_dict(self, best_performing, total_count, total_score, tc_data, key):
-        if key not in self.diffsim_dict:
+        if key not in self.diffsim_dict: 
+            #if key is not in dict yet, it's either the similarity test case or the first difference test case
             self.diffsim_dict[key] = {
                 "best performing" : best_performing,
                 "total count" : total_count,
                 "total score" : total_score,
                 "tc data" : tc_data
             }
-        else:
-            incomingbp_dict = {tup[0] : tup[1] for tup in best_performing}
-            ogbp_dict = {tup[0] : tup[1] for tup in self.diffsim_dict[key]["best performing"]}
-
-            bp_lkey_list, merged_bestperforming = self.merge_best_performing(incomingbp_dict, ogbp_dict)
+        else: #test set must be a difference test set, since there's only one similarity test set
+            bp_lkey_list = self.find_bestp_intersection(best_performing, self.diffsim_dict[key]["best performing"])
             merged_total_count = {}
             merged_total_score = {}
             
@@ -112,21 +110,19 @@ class SignalComparator:
                 merged_total_score[lkey] = self.diffsim_dict[key]["total score"][lkey] + total_score[lkey]
                 self.diffsim_dict[key]["tc data"][lkey].update(tc_data[lkey])
             
-            self.diffsim_dict[key]["best performing"] = merged_bestperforming
+            sorted_bestperforming = sorted(merged_total_score.items(), key=lambda x:x[1], reverse=False)
+            
+            self.diffsim_dict[key]["best performing"] = sorted_bestperforming
             self.diffsim_dict[key]["total count"] = merged_total_count
             self.diffsim_dict[key]["total score"] = merged_total_score
     
-    def merge_best_performing(self, og_bp, incoming_bp): 
-        merged = []
-        lkey_list = []
-        for k, v in og_bp.items(): 
-            if k in incoming_bp: 
-                avg = (v + incoming_bp[k]) / 2
-                merged.append((k, avg))
-                lkey_list.append(k)
-
-        return lkey_list, merged
-            
+    def find_bestp_intersection(self, og_bp, incoming_bp): 
+        og_list = [x for x, y in og_bp]
+        incoming_list = [x for x, y in incoming_bp]
+        og_set = set(og_list)
+        incoming_set = set(incoming_list)
+        intersection = og_set.intersection(incoming_set)
+        return list(intersection)
     
     def find_best_performing(self, lkey_data, reverse):
 

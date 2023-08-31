@@ -1,62 +1,87 @@
+import pandas as pd 
+import matplotlib.pylab as plt
+import os
+import scipy.stats as stats
+from signal_comparison.artifactgenerator import ArtifactGenerator
+
+
+class PipelineComparator: 
+    def __init__(self, baw_run_dirs, fpaths, input_root, output_dir, baw_xlabels, baw_titles, lkeys_to_plot, scatter_dirs, scatter_markers): 
+        self.baw_run_dirs = baw_run_dirs
+        self.fpaths = fpaths
+        self.res = {}
+        self.input_root = input_root
+        self.output_dir = output_dir
+        self.baw_xlabels = baw_xlabels
+        self.baw_titles = baw_titles
+        self.lkeys_to_plot = lkeys_to_plot
+        self.scatter_dirs = scatter_dirs
+        self.scatter_markers = scatter_markers
+
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
     
-    
-    def analyze_results(self, tocomparedir, tocomparefiles, titles, xlabels):
-        filedata = {}
+    def run(self):
   
-        for f in tocomparefiles:
+        for fpath in self.fpaths:
             
-            filedata[f] = {
-                "index" : [],
-                "xlabels" : [], 
+            self.res[fpath] = {
+                "baw index" : [],
+                "baw xlabels" : [], 
                 "avgs" : [], 
-                "pairs" : {}
+                "lkeys" : {}
             }
             
-            index = 0
-            for directory in tocomparedir: 
-                index += 1
-                fi = open("./correlation_reports/" + directory + f, 'r') 
-                lines = fi.readlines()
-                dirname = directory.split("/")[-2] 
-                filedata[f]["xlabels"].append(xlabels[dirname])
-                filedata[f]["index"].append(index)
-                avgs = []
-                filedata[f]["pairs"][dirname] = {}
-                for line in lines: 
-                    if any(str(pair) in line for pair in self.target_pairs):
-                        words = line.split(" ")
-                        num1 = int(words[0].replace("(","").replace(",",""))
-                        num2 = int(words[1].replace(")",""))
-                        t = (num1, num2)
-                        avg = float(words[10])
-                        filedata[f]["pairs"][dirname][t] = avg
-                        avgs.append(avg)
-
-                filedata[f]["avgs"].append(avgs)
+            for index, directory in enumerate(self.baw_run_dirs): 
+                self.extract_data(directory, index, fpath)
             
-            self.box_and_whisker(filedata, f, titles)
-        
-        return filedata
+            self.box_and_whisker(self.res, fpath)
+            #self.scatter_plot()
     
-    def box_and_whisker(self, data, f, titles): 
+    def extract_data(self, directory, index, fpath): 
+        fi = open(self.input_root + directory + fpath, 'r') 
+        lines = fi.readlines()
+        dirname = directory.replace("/","") 
+        self.res[fpath]["baw xlabels"].append(self.baw_xlabels[dirname])
+        self.res[fpath]["baw index"].append(index + 1)
+        avgs = []
+        self.res[fpath]["lkeys"][dirname] = {}
+        for line in lines: 
+            if any(str(lkey) in line for lkey in self.lkeys_to_plot):
+                words = line.split(" ")
+                num1 = int(words[0].replace("(","").replace(",",""))
+                num2 = int(words[1].replace(")",""))
+                t = (num1, num2)
+                avg = float(words[10])
+                self.res[fpath]["lkeys"][dirname][t] = avg
+                avgs.append(avg)
+        
+        self.res[fpath]["avgs"].append(avgs)
+
+    
+    def box_and_whisker(self, data, f): 
         plt.clf()
         plt.boxplot(data[f]["avgs"])
-        plt.xticks(data[f]["index"], data[f]["xlabels"], rotation=80)
-        plt.suptitle(titles[f])
-        fname = f.replace(".txt", "")
-        plt.savefig(fname, bbox_inches='tight')  
+        plt.xticks(data[f]["baw index"], data[f]["baw xlabels"], rotation=80)
+        plt.suptitle(self.baw_titles[f])
+        fname = f.replace(".txt", "").split("/")[-2]
+        plt.savefig(self.output_dir + fname, bbox_inches='tight')  
               
     
-    def scatter_plot(self, tocomparefiles, dirs, titles, markers, data):
+    def scatter_plot(self):
+        '''
+        todo. Not completed testing/implementing yet 
+        '''
         plt.clf()
-        pairdata = {dirs[0] : {}, dirs[1] : {}}
-        tempdata = {dirs[0] : [], dirs[1] : []}
+        pairdata = {self.scatter_dirs[0] : {}, self.scatter_dirs[1] : {}}
+        tempdata = {self.scatter_dirs[0] : [], self.scatter_dirs[1] : []}
     
-        for i, d in enumerate(dirs):
+        for i, d in enumerate(self.scatter_dirs):
+            d = d.replace("/","")
             simavg = {}
             diffavg = {}
-            for f in tocomparefiles: 
-                for tup, avg in data[f]["pairs"][d].items():
+            for f in self.fpaths: 
+                for tup, avg in self.res[f]["lkeys"][d].items():
                     if "angle" in f: 
                         simavg[tup] = avg
                     elif "utterance" in f:
@@ -70,14 +95,13 @@
                 diff = diffavg[k]
                 pairdata[d][k] = (v, diff)
                 tempdata[d].append((v, diff))
-                plt.plot(v, diff, marker=markers[d], label=k)
+                plt.plot(v, diff, marker=self.scatter_markers[d], label=k)
 
        
         plt.xlabel("Pearson Correlation for Similarity Test Cases")
 
         plt.ylabel("Pearson Correlation for Differences Test Cases")
-        # handles, labels = plt.gca().get_legend_handles_labels()
-        # by_label = dict(zip(labels, handles))
+   
         plt.legend(bbox_to_anchor=(1.0, 2),loc="upper left")
-        plt.savefig("scatterplottest2", bbox_inches='tight')  
+        plt.savefig(self.output_dir + "scatterplot", bbox_inches='tight')  
             

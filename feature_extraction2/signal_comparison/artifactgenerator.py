@@ -71,14 +71,13 @@ class ArtifactGenerator():
     
     def convert_row_to_list(self, df, lkey): 
         index = int(np.where(df["Landmark_key"] == str(lkey))[0][0])
-        df_data_str = df["Data"].iloc[index]
+        df_data_str = str(df["Data"].iloc[index])
         df_data_l = df_data_str.replace("[","").replace("]","").split(",")
         df_data_f = [float(i) for i in df_data_l]
         return df_data_f
 
     
     def plot_comparison(self, odata, pdata, ndata, lkeys, vids, labels):
-        print(pdata)
         for lkey in lkeys:
             plt.clf()
             f, ax = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
