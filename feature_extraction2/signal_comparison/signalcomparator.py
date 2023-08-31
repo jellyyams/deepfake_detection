@@ -8,42 +8,40 @@ from signal_comparison.artifactgenerator import ArtifactGenerator
 
 
 class SignalComparator: 
-    def __init__(self, data, output_dir, test_sets, top_cutoff, bottom_cutoff, top_num, bottom_num, ba_plot, run_test_sets, find_best_lkeys): 
-        self.data = data
+    def __init__(self, odata, pdata, ndata, output_dir, test_sets, top_cutoff, bottom_cutoff, top_num, bottom_num, make_plots, run_test_sets, use_processed, lkeys_to_plot, vids_to_plot, plot_labels): 
+        self.odata = odata
+        self.ndata = ndata
+        self.pdata = pdata
+    
+        if use_processed: 
+            self.data = pdata
+        else:
+            self.data = odata
+            
         self.artifactgen = ArtifactGenerator(output_dir)
         self.test_sets = test_sets
         self.top_cutoff = top_cutoff 
         self.bottom_cutoff = bottom_cutoff 
         self.top_num = top_num
         self.bottom_num = bottom_num
-        self.ba_plot = ba_plot
+        self.make_plots = make_plots
         self.tc_lkey_dict = {}
         self.diffsim_dict = {}
         self.run_test_sets = run_test_sets
-        self.find_best_lkeys = find_best_lkeys
-
+        self.lkeys_to_plot = lkeys_to_plot
+        self.vids_to_plot = vids_to_plot
+        self.plot_labels = plot_labels
         
-        # looking_for_sim = most_similar
-        # self.file_extension = file_extension
- 
-        # self.analysis = analysis
-    
-        # self.r_window_size = r_window_size
-        # self.bounded_results = {}
-        # self.best_landmarks = []
-        # self.processed = processed
-
     
     def run(self): 
-        if self.run_test_sets: self.run_testsets()
-                
-        if self.find_best_lkeys: self.best_lkey_search()
-        if len(self.ba_plot) > 0: self.make_ba_plots()
-    
-    def make_ba_plots(self):
-        self.artifactgen.plot_before_after(data, self.ba_plot)
+        if self.run_test_sets: 
+            self.run_testsets()
+            self.find_best_lkeys()
+        if self.make_plots: 
+            self.artifactgen.plot_comparison(self.odata, self.pdata, self.ndata, self.lkeys_to_plot, self.vids_to_plot, self.plot_labels)
+        
 
-    def best_lkey_search(self): 
+    def find_best_lkeys(self): 
         self.find_top_diff_from_sim()
         self.find_intersection()
 
@@ -83,8 +81,9 @@ class SignalComparator:
                 diffsim_key = "diff"
 
             for testcase_name, testcase_files in testset.items(): 
+                print("completed testcase: " + testcase_name)
                 
-                testcase_res = self.run_testcases(testcase_files, testcase_name, True, self.top_cutoff, ts_name)
+                testcase_res = self.run_testcases(testcase_files, testcase_name, True, r_cutoff, ts_name)
                 self.add_to_lkey_dict(testcase_res, testcase_name)
         
             best_performing, total_count, total_score = self.find_best_performing(self.tc_lkey_dict, finding_sim)
@@ -123,18 +122,14 @@ class SignalComparator:
         for k, v in og_bp.items(): 
             if k in incoming_bp: 
                 avg = (v + incoming_bp[k]) / 2
-                print(avg)
                 merged.append((k, avg))
                 lkey_list.append(k)
 
         return lkey_list, merged
             
-
     
     def find_best_performing(self, lkey_data, reverse):
-        '''
-        to do 
-        '''
+
         total_count = {}
         total_score = {}
         data = {}
@@ -230,21 +225,6 @@ class SignalComparator:
                 self.tc_lkey_dict[k][tc_name] = v
             else:
                 self.tc_lkey_dict[k] = {tc_name : v}
-
-    
-    # def run_test_cases(self, testcases, cutoff, topnum, reverse):
-    #     top_pairs = {}
-
-
-
-    #     self.write_data_into_csv(top_pairs, testcases["name"], cutoff)
-    #     best_performing, total_count, total_score = self.find_best_performing(top_pairs, reverse)
-    #     self.write_report(best_performing, top_pairs, total_count, testcases["name"], topnum)
-    #     best_pairs = [x for x, y in best_performing]
-        
-    #     return best_pairs[:topnum], top_pairs, total_count, total_score
-
-   
 
 
 

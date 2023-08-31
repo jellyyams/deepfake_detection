@@ -62,7 +62,7 @@ class Driver:
                 anchor_landmark = self.vidp_settings["anchor landmark"],
                 target_landmarks = landmarks,
                 pairs_to_analyze = pairs_to_analyze,
-                pairs_to_plot = self.landmark_settings["pairs to plot"],
+                pairs_to_plot = self.landmark_settings["lkeys to plot"],
                 generate_video = self.vidp_settings["generate video?"],
                 norm_approach = self.vidp_settings["norm by"],
                 draw_landmark_nums = self.vidp_settings["draw landmark nums?"], 
@@ -78,6 +78,9 @@ class Driver:
             self.write_data_to_csv(landmark_groups, pathsplit[1], "landmark_groups", self.dirs["vid processing output"])
 
     def run_signal_processing(self): 
+        """
+        runs signal processing on video data
+        """
         output_dir = self.output_dir + self.dirs["sig processing output"] 
         
         signalprocessor = SignalProcessor(
@@ -87,35 +90,38 @@ class Driver:
             self.sigp_settings["moving avg window"], 
             self.sigp_settings["butter settings"], 
             output_dir, 
-            self.landmark_settings["lkeys to avg"])
+            self.landmark_settings["lkeys to avg"],
+            self.landmark_settings["lkeys to plot"])
  
         for dirname in self.sigp_settings["files"]:
     
             dframe = self.read_data_from_csv(dirname, self.sigp_settings["datatype"], self.dirs["vid processing output"])
-            original, processed, normed = signalprocessor.run(dframe, dirname, self.sigp_settings["datatype"])    
+            processed, normed = signalprocessor.run(dframe, dirname, self.sigp_settings["datatype"])    
             path = dirname.replace("/","")
             self.write_data_to_csv(processed, path, "processed", self.dirs["sig processing output"]) 
             self.write_data_to_csv(normed, path, "normed", self.dirs["sig processing output"]) 
-            self.write_data_to_csv(original, path, "raw", self.dirs["sig processing output"]) 
             print("completed signal processing on file: " + dirname)
     
     def run_signal_comparison(self): 
-        if self.sigc_settings["use processed?"] and os.path.exists(self.output_dir + self.dirs["sig processing output"]):
-            rootdir = self.dirs["sig processing output"]
-        else: 
-            rootdir = self.dirs["vid processing output"]
-        
-        data = {}
+   
+        pdata = {}
+        odata = {}
+        ndata = {}
         for tc_name, testset in self.sigc_settings["test sets"].items():
             for k, v in testset.items():
                 for x in v: 
-                    if x not in data: 
-                        data[x] = self.read_data_from_csv(x, self.sigc_settings["to compare fname"], rootdir)
+                    if x not in odata: 
+                        odata[x] = self.read_data_from_csv(x, "landmark_groups", self.dirs["vid processing output"])
+                        if os.path.exists(self.output_dir + self.dirs["sig processing output"]): 
+                            pdata[x] = self.read_data_from_csv(x, "processed", self.dirs["sig processing output"])
+                            ndata[x] = self.read_data_from_csv(x, "normed", self.dirs["sig processing output"])
 
         output_dir = self.output_dir + self.dirs["sig comparison output"] 
 
         signalcomparator = SignalComparator(
-            data, 
+            odata, 
+            pdata, 
+            ndata,
             output_dir, 
             self.sigc_settings["test sets"], 
             self.sigc_settings["top cutoff"], 
@@ -124,7 +130,10 @@ class Driver:
             self.sigc_settings["bottom num"], 
             self.sigc_settings["make plots?"], 
             self.sigc_settings["run test sets?"],
-            self.sigc_settings["find best performing lkeys?"]
+            self.sigc_settings["use processed?"], 
+            self.landmark_settings["lkeys to plot"], 
+            self.sigc_settings["vids to plot"], 
+            self.sigc_settings["plot labels"]
         )
 
         signalcomparator.run()
@@ -148,6 +157,9 @@ class Driver:
             writer.writerow(data)
 
     def read_data_from_csv(self, dirname, fname, rootfolder):
+        """
+        reads csv data and returns a dataframe
+        """
     
         full_path = self.output_dir + rootfolder + dirname + fname + ".csv"
         df = pd.read_csv(full_path, header=None)

@@ -1,4 +1,6 @@
 import os
+import matplotlib.pylab as plt
+import numpy as np
 
 class ArtifactGenerator(): 
     def __init__(self, output_dir): 
@@ -8,9 +10,6 @@ class ArtifactGenerator():
             os.makedirs(self.output_dir)
     
     def write_testc_report(self, results, averaged_results, tc_name, looking_for_sim, cutoff, tc_files, dirname):
-        #create final dataframe that can be displayed 
-        #rows: each landmark pair 
-        #columns: each comparison pair and final avg 
 
         bounded_res = {}
         results_avg_list = sorted(averaged_results.items(), key=lambda x:x[1], reverse=looking_for_sim)
@@ -70,29 +69,44 @@ class ArtifactGenerator():
                 d_avg = dscore[s] / dcount[s]
                 f.write(s + " similarity avg pearson: " + str(s_avg) + " difference avg pearson: " + str(d_avg) + "\n")
     
-    def plot_before_after(self, data, labels):
-        for pair in self.target_pairs:
-            plt.clf()
-            f, ax = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
-            ax[0].set(xlabel="Frames", ylabel="Min-max normed distances", ylim=(0,1))
-            ax[1].set(xlabel="Frames", ylabel="Processed distances")
-            for vid in self.videos_for_plotting:
-                df = data[vid]
-                index = int(np.where(df["Landmark_key"] == str(pair))[0][0])
+    def convert_row_to_list(self, df, lkey): 
+        index = int(np.where(df["Landmark_key"] == str(lkey))[0][0])
+        df_data_str = df["Data"].iloc[index]
+        df_data_l = df_data_str.replace("[","").replace("]","").split(",")
+        df_data_f = [float(i) for i in df_data_l]
+        return df_data_f
 
-                ax[0].plot(df["Normalized"].iloc[index], label=labels[vid])
-                ax[1].plot(df["Processed"].iloc[index], label=labels[vid])
+    
+    def plot_comparison(self, odata, pdata, ndata, lkeys, vids, labels):
+        print(pdata)
+        for lkey in lkeys:
+            plt.clf()
+            f, ax = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
+            ax[0].set(xlabel="Frames", ylabel="Raw unprocessed distances")
+            ax[1].set(xlabel="Frames", ylabel="Min-max normed distances")
+            ax[2].set(xlabel="Frames", ylabel="Processed distances")
+            for vid in vids:
+                dfo = odata[vid]
+                dfp = pdata[vid]
+                dfn = ndata[vid]
+                
+                dfo_data = self.convert_row_to_list(dfo, lkey)
+                dfp_data = self.convert_row_to_list(dfp, lkey)
+                dfn_data = self.convert_row_to_list(dfn, lkey)
+             
+                ax[0].plot(dfo_data, label=labels[vid])
+                ax[1].plot(dfn_data, label=labels[vid])
+                ax[2].plot(dfp_data, label=labels[vid])
                 n = vid.replace("/","_")
-                # self.signalP.simple_moving_avg(df.loc[index,"Normalized"], 2, n)
-            
+                            
             f.tight_layout(pad=3.0)
             plt.legend(bbox_to_anchor=(1.0, 2),loc="upper left")
-            plt.suptitle("Raw vs. Processed Distance Data For Pair " + str(pair))
+            plt.suptitle("Raw vs. Normed vs. Processed Distance Data For lkey " + str(lkey))
 
             if not os.path.exists(self.output_dir + "plots/"):
                 os.makedirs(self.output_dir + "plots/")
 
-            plt.savefig(self.output_dir + "plots/" + str(pair), bbox_inches='tight')
+            plt.savefig(self.output_dir + "plots/" + str(lkey), bbox_inches='tight')
    
     
   

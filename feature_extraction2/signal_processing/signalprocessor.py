@@ -42,15 +42,15 @@ class SignalProcessor:
             postavg_pipeline = self.pipeline[avg_index+1:]
             
 
-            ogdata, pre, ndata = self.filter_and_preavg(preavg_pipeline, dframe)
+            pre, ndata = self.filter_and_preavg(preavg_pipeline, dframe)
             avg = self.avg_across_signals(pre)
             pdata, n = self.postavg(postavg_pipeline, avg)
 
         else:
-            ogdata, pdata, ndata = self.filter_and_preavg(self.pipeline, dframe)
+            pdata, ndata = self.filter_and_preavg(self.pipeline, dframe)
         
         self.make_plots(plotdir, fname)
-        return ogdata, pdata, ndata
+        return pdata, ndata
 
     
     def make_plots(self, plotdir, fname): 
@@ -85,31 +85,29 @@ class SignalProcessor:
             }
         }
         p, n, i = self.process_signal(l, pipeline, lkey)
-        return l, p, n, i, lkey
+        return p, n, i, lkey
 
     def filter_and_preavg(self, pipeline, dframe): 
         pdata = {}
         ndata = {}
-        odata = {}
         i = 0
         for index, row in dframe.iterrows():
             if self.should_filter:
                 if (any(str(lkey) == row["Landmark_key"] for lkey in self.filter_lkeys)): 
-                    o, p, n, i, lk = self.process_row(row, pipeline)
+                    p, n, i, lk = self.process_row(row, pipeline)
                     pdata[lk] = p
                     ndata[lk] = n 
-                    odata[lk] = o
+
                     
             else: 
-                o, p, n, i, lk = self.process_row(row, pipeline)
+                p, n, i, lk = self.process_row(row, pipeline)
                 pdata[lk] = p
                 ndata[lk] = n 
-                odata[lk] = o
 
         if len(pipeline) > 0: 
             self.last_step = self.last_step + i + 1
        
-        return odata, pdata, ndata
+        return pdata, ndata
          
                 
     def process_signal(self, raw, pipeline, pair): 
@@ -163,9 +161,9 @@ class SignalProcessor:
         return d_scaled
 
 
-    def avg_one_pair(self, pairs_toavg, data, lkey):
+    def avg_one_pair(self, lkeys_toavg, data, lkey):
         averaged = data[str(lkey)]
-        for toavg in pairs_toavg: 
+        for toavg in lkeys_toavg: 
             nextrow_data = data[str(toavg)]
             averaged = [(g + h) / 2 for g, h in zip(averaged, nextrow_data)]
 

@@ -1,3 +1,5 @@
+    
+    
     def analyze_results(self, tocomparedir, tocomparefiles, titles, xlabels):
         filedata = {}
   
