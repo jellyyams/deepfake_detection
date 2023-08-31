@@ -1,6 +1,7 @@
 from driver_config import *
 from video_processing.mp_extractor import MPFeatureExtractor 
 from signal_processing.signalprocessor import SignalProcessor
+from signal_comparison.signalcomparator import SignalComparator
 from landmarks import Landmarks
 import os
 import csv
@@ -29,11 +30,13 @@ class Driver:
 
     
     '''
-    def __init__(self, vid_processing_settings, sig_processing_settings, directories): 
+    def __init__(self, vid_processing_settings, sig_processing_settings, sig_comparison_settings, directories, landmark_settings): 
         self.vidp_settings =  vid_processing_settings
         self.sigp_settings = sig_processing_settings
+        self.sigc_settings = sig_comparison_settings
         self.dirs = directories
         self.landmarks = Landmarks()
+        self.landmark_settings = landmark_settings
         self.output_dir = directories["output root"] + str(Run["number"]) + "/"
         
         if not os.path.exists(self.output_dir):
@@ -59,7 +62,7 @@ class Driver:
                 anchor_landmark = self.vidp_settings["anchor landmark"],
                 target_landmarks = landmarks,
                 pairs_to_analyze = pairs_to_analyze,
-                pairs_to_plot = self.vidp_settings["pairs to plot"],
+                pairs_to_plot = self.landmark_settings["pairs to plot"],
                 generate_video = self.vidp_settings["generate video?"],
                 norm_approach = self.vidp_settings["norm by"],
                 draw_landmark_nums = self.vidp_settings["draw landmark nums?"], 
@@ -70,44 +73,64 @@ class Driver:
 
             landmark_coords, landmark_single, landmark_groups = app.run()
             pathsplit = vid.split('/')
-            self.write_data_to_csv(landmark_coords, pathsplit[1], "coords", self.dirs["vid data output"])
-            self.write_data_to_csv(landmark_single, pathsplit[1], "landmark_single", self.dirs["vid data output"])
-            self.write_data_to_csv(landmark_groups, pathsplit[1], "landmark_groups", self.dirs["vid data output"])
+            self.write_data_to_csv(landmark_coords, pathsplit[1], "coords", self.dirs["vid processing output"])
+            self.write_data_to_csv(landmark_single, pathsplit[1], "landmark_single", self.dirs["vid processing output"])
+            self.write_data_to_csv(landmark_groups, pathsplit[1], "landmark_groups", self.dirs["vid processing output"])
 
     def run_signal_processing(self): 
-        output_dir = self.output_dir + self.dirs["sig processing data output"] 
+        output_dir = self.output_dir + self.dirs["sig processing output"] 
         
         signalprocessor = SignalProcessor(
-            self.sigp_settings["make plots for"], 
+            self.sigp_settings["make plots?"], 
             self.sigp_settings["should filter?"], 
             self.sigp_settings["pipeline"], 
             self.sigp_settings["moving avg window"], 
             self.sigp_settings["butter settings"], 
             output_dir, 
-            self.sigp_settings["pairs to avg"])
+            self.landmark_settings["lkeys to avg"])
  
         for dirname in self.sigp_settings["files"]:
     
-            dframe = self.read_data_from_csv(dirname, self.sigp_settings["datatype"], self.dirs["vid data output"])
-            processed, normed = signalprocessor.run(dframe, dirname, self.sigp_settings["datatype"])    
+            dframe = self.read_data_from_csv(dirname, self.sigp_settings["datatype"], self.dirs["vid processing output"])
+            original, processed, normed = signalprocessor.run(dframe, dirname, self.sigp_settings["datatype"])    
             path = dirname.replace("/","")
-            self.write_data_to_csv(processed, path, "processed", self.dirs["sig processing data output"]) 
-            self.write_data_to_csv(processed, path, "normed", self.dirs["sig processing data output"]) 
-
-
+            self.write_data_to_csv(processed, path, "processed", self.dirs["sig processing output"]) 
+            self.write_data_to_csv(normed, path, "normed", self.dirs["sig processing output"]) 
+            self.write_data_to_csv(original, path, "raw", self.dirs["sig processing output"]) 
+            print("completed signal processing on file: " + dirname)
     
     def run_signal_comparison(self): 
-        for sim in self.sim_test_cases: 
-            best_sim_list, best_sim_pairs, sim_total_count, sim_total_score = self.run_test_cases(sim, self.top_cutoff, self.top_num, reverse=True)
+        if self.sigc_settings["use processed?"] and os.path.exists(self.output_dir + self.dirs["sig processing output"]):
+            rootdir = self.dirs["sig processing output"]
+        else: 
+            rootdir = self.dirs["vid processing output"]
         
-        for diff in self.diff_test_cases: 
-            best_diff_list, best_diff_pairs, diff_total_count, diff_total_score = self.run_test_cases(diff, self.bottom_cutoff, self.bottom_num, reverse=False) 
-    
+        data = {}
+        for tc_name, testset in self.sigc_settings["test sets"].items():
+            for k, v in testset.items():
+                for x in v: 
+                    if x not in data: 
+                        data[x] = self.read_data_from_csv(x, self.sigc_settings["to compare fname"], rootdir)
+
+        output_dir = self.output_dir + self.dirs["sig comparison output"] 
+
+        signalcomparator = SignalComparator(
+            data, 
+            output_dir, 
+            self.sigc_settings["test sets"], 
+            self.sigc_settings["top cutoff"], 
+            self.sigc_settings["bottom cutoff"], 
+            self.sigc_settings["top num"], 
+            self.sigc_settings["bottom num"], 
+            self.sigc_settings["make plots?"], 
+            self.sigc_settings["run test sets?"],
+            self.sigc_settings["find best performing lkeys?"]
+        )
+
+        signalcomparator.run()
+        
     def run_pipeline_comparison(self): 
         pass
-    
-    def find_best_pairs(self): 
-        pass 
 
     def write_data_to_csv(self, data, dirname, fname, rootfolder):
         """
@@ -128,16 +151,14 @@ class Driver:
     
         full_path = self.output_dir + rootfolder + dirname + fname + ".csv"
         df = pd.read_csv(full_path, header=None)
-        df = df.rename({0:"Landmark_key", 1:"Raw_data"}, axis="index")
+        df = df.rename({0:"Landmark_key", 1:"Data"}, axis="index")
         df = df.T
 
         return df
-        
-  
      
     
 def main(): 
-    driver = Driver(VideoProcessing, SignalProcessing, Directories)
+    driver = Driver(VideoProcessing, SignalProcessing, SignalComparison, Directories, LandmarkSettings)
     if Run["video processing?"]: driver.run_vid_processing()
     if Run["signal processing?"]: driver.run_signal_processing()
     if Run["signal comparison?"]: driver.run_signal_comparison()

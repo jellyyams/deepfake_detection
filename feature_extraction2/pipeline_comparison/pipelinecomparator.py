@@ -1,3 +1,41 @@
+    def analyze_results(self, tocomparedir, tocomparefiles, titles, xlabels):
+        filedata = {}
+  
+        for f in tocomparefiles:
+            
+            filedata[f] = {
+                "index" : [],
+                "xlabels" : [], 
+                "avgs" : [], 
+                "pairs" : {}
+            }
+            
+            index = 0
+            for directory in tocomparedir: 
+                index += 1
+                fi = open("./correlation_reports/" + directory + f, 'r') 
+                lines = fi.readlines()
+                dirname = directory.split("/")[-2] 
+                filedata[f]["xlabels"].append(xlabels[dirname])
+                filedata[f]["index"].append(index)
+                avgs = []
+                filedata[f]["pairs"][dirname] = {}
+                for line in lines: 
+                    if any(str(pair) in line for pair in self.target_pairs):
+                        words = line.split(" ")
+                        num1 = int(words[0].replace("(","").replace(",",""))
+                        num2 = int(words[1].replace(")",""))
+                        t = (num1, num2)
+                        avg = float(words[10])
+                        filedata[f]["pairs"][dirname][t] = avg
+                        avgs.append(avg)
+
+                filedata[f]["avgs"].append(avgs)
+            
+            self.box_and_whisker(filedata, f, titles)
+        
+        return filedata
+    
     def box_and_whisker(self, data, f, titles): 
         plt.clf()
         plt.boxplot(data[f]["avgs"])

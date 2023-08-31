@@ -6,26 +6,27 @@ import os
 import math
 
 class SignalProcessor:
-    def __init__(self, make_plots_for, should_filter, pipeline, movingavg_window, butter_settings, output_dir, pairs_to_avg):
-        self.make_plots_for = make_plots_for
+    def __init__(self, make_plots_bool, should_filter, pipeline, movingavg_window, butter_settings, output_dir, lkeys_to_avg, lkeys_to_plot):
+        self.make_plots_bool = make_plots_bool
+        self.lkeys_to_plot = lkeys_to_plot
         self.pipeline = pipeline
         self.should_filter = should_filter
         self.movingavg_window = movingavg_window
         self.butter_settings = butter_settings
         
-        self.pairs_to_avg = pairs_to_avg
+        self.lkeys_to_avg = lkeys_to_avg
         self.filter_lkeys = self.gen_filter_lkeys()
         self.output_dir = output_dir
         self.plot_tracker = {}
         self.last_step = 0
 
-        for lkey in make_plots_for: 
+        for lkey in self.lkeys_to_plot: 
             self.plot_tracker[lkey] = {}
     
     def gen_filter_lkeys(self): 
         res = []
         
-        for k, v in self.pairs_to_avg.items(): 
+        for k, v in self.lkeys_to_avg.items(): 
             res.append(k)
             res = res + v
             
@@ -41,70 +42,74 @@ class SignalProcessor:
             postavg_pipeline = self.pipeline[avg_index+1:]
             
 
-            pre, ndata = self.filter_and_preavg(preavg_pipeline, dframe)
+            ogdata, pre, ndata = self.filter_and_preavg(preavg_pipeline, dframe)
             avg = self.avg_across_signals(pre)
             pdata, n = self.postavg(postavg_pipeline, avg)
 
         else:
-            pdata, ndata = self.filter_and_preavg(self.pipeline, dframe)
+            ogdata, pdata, ndata = self.filter_and_preavg(self.pipeline, dframe)
         
         self.make_plots(plotdir, fname)
-        return pdata, ndata
+        return ogdata, pdata, ndata
 
     
     def make_plots(self, plotdir, fname): 
         if not os.path.exists(plotdir):
             os.makedirs(plotdir)
    
-        for lkey in self.make_plots_for: 
-            self.plot_tracker[str(lkey)][0]["after"] = self.plot_tracker[str(lkey)][self.last_step]["after"]
-            self.plot_res(self.plot_tracker[str(lkey)], str(lkey) + fname, plotdir)
+        if self.make_plots_bool: 
+            for lkey in self.lkeys_to_plot: 
+                self.plot_tracker[str(lkey)][0]["after"] = self.plot_tracker[str(lkey)][self.last_step]["after"]
+                self.plot_res(self.plot_tracker[str(lkey)], str(lkey) + fname, plotdir)
 
     def postavg(self, pipeline, data):
         pdata = {}
         ndata = {}
-        for pair, signal in data.items():
-            n, p, i = self.process_signal(signal, pipeline, pair)
-            pdata[pair] = p
-            ndata[pair] = n
+        for lkey, signal in data.items():
+            n, p, i = self.process_signal(signal, pipeline, lkey)
+            pdata[lkey] = p
+            ndata[lkey] = n
         if len(pipeline) > 0: 
             self.last_step = self.last_step + i + 1
         return pdata, ndata
     
     def process_row(self, row, pipeline):
-        l = row["Raw_data"].replace("]", "").replace("[", "").split(",")
+        l = row["Data"].replace("]", "").replace("[", "").split(",")
         l = [float(i) for i in l]
-        pair = row["Landmark_key"]
-        self.plot_tracker[pair] = {
+        lkey = row["Landmark_key"]
+        self.plot_tracker[lkey] = {
             0 : {
                 "type" : "Entire pipeline", 
                 "before" : l, 
                 "after" : []
             }
         }
-        p, n, i = self.process_signal(l, pipeline, pair)
-        return p, n, i, pair
+        p, n, i = self.process_signal(l, pipeline, lkey)
+        return l, p, n, i, lkey
 
     def filter_and_preavg(self, pipeline, dframe): 
         pdata = {}
         ndata = {}
+        odata = {}
         i = 0
         for index, row in dframe.iterrows():
             if self.should_filter:
                 if (any(str(lkey) == row["Landmark_key"] for lkey in self.filter_lkeys)): 
-                    p, n, i, pair = self.process_row(row, pipeline)
-                    pdata[pair] = p
-                    ndata[pair] = n 
+                    o, p, n, i, lk = self.process_row(row, pipeline)
+                    pdata[lk] = p
+                    ndata[lk] = n 
+                    odata[lk] = o
                     
             else: 
-                p, n, i, pair = self.process_row(row, pipeline)
-                pdata[pair] = p
-                ndata[pair] = n 
+                o, p, n, i, lk = self.process_row(row, pipeline)
+                pdata[lk] = p
+                ndata[lk] = n 
+                odata[lk] = o
 
         if len(pipeline) > 0: 
             self.last_step = self.last_step + i + 1
        
-        return pdata, ndata
+        return odata, pdata, ndata
          
                 
     def process_signal(self, raw, pipeline, pair): 
@@ -170,7 +175,7 @@ class SignalProcessor:
     def avg_across_signals(self, original):
         res = {}
         self.last_step += 1
-        for lkey, lkeys in self.pairs_to_avg.items():
+        for lkey, lkeys in self.lkeys_to_avg.items():
             res[str(lkey)] = self.avg_one_pair(lkeys, original, lkey)
             self.plot_tracker[str(lkey)][self.last_step] = {
                 "type" : "avg_across_signals", 

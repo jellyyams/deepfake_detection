@@ -2,7 +2,7 @@ Run = {
    "number" : 1, 
    "video processing?" : False,
    "signal processing?" : True,
-   "signal comparison?" : False,
+   "signal comparison?" : True,
    "pipeline comparison?" : False, 
    "find best pairs?" : False, 
 }
@@ -10,8 +10,9 @@ Run = {
 Directories = {
    "video input root" : "../../../Desktop/Deepfake_Detection/Test_Videos/", 
    "output root" : "./results/run_number_", 
-   "vid data output" : "vidprocessing_data/", 
-   "sig processing data output" : "sigprocessing_data/"
+   "vid processing output" : "vidprocessing_data/", 
+   "sig processing output" : "sigprocessing_data/", 
+   "sig comparison output" : "sigcomparison_data/"
 }
 
 VideoProcessing = {
@@ -26,8 +27,55 @@ VideoProcessing = {
    "key regions" : ["Inner", "Outer", "1", "Corner", "0", "Eyebrow"],
    "norm by" : "first_upper_lower_bbox", #vs "first_quarters_bbox" vs "face_bbox" vs "none" vs "upper_lower_bbox" vs "first_face_bbox" vs "first_upper_lower_bbox"
    "videos" : [
-      "Krithika_Front/krithika_front_s2_v1",
-      "Kelly_Front/kelly_front_s2_v1",
+      "Kelly_Front/kelly_front_s1_v2",
+      "Kelly_Low/kelly_low_s1_v2",
+      "Kelly_Right_Threequarter/kelly_right_threequarter_s1_v2",
+      "Kelly_Left_Threequarter/kelly_left_threequarter_s1_v2",
+      "Kelly_Front/kelly_front_s2_v2",
+      "Kelly_Low/kelly_low_s2_v2",
+      "Kelly_Right_Threequarter/kelly_right_threequarter_s2_v2",
+      "Kelly_Left_Threequarter/kelly_left_threequarter_s2_v2",
+      "Kelly_Front/kelly_front_s3_v2",
+      "Kelly_Low/kelly_low_s3_v2",
+      "Kelly_Right_Threequarter/kelly_right_threequarter_s3_v2",
+      "Kelly_Left_Threequarter/kelly_left_threequarter_s3_v2",
+      "Kelly_Front/kelly_front_s4_v2",
+      "Kelly_Low/kelly_low_s4_v2",
+      "Kelly_Right_Threequarter/kelly_right_threequarter_s4_v2",
+      "Kelly_Left_Threequarter/kelly_left_threequarter_s4_v2",
+      "Kelly_Front/kelly_front_s27_v2",
+      "Kelly_Low/kelly_low_s27_v2",
+      "Kelly_Right_Threequarter/kelly_right_threequarter_s27_v2",
+      "Kelly_Left_Threequarter/kelly_left_threequarter_s27_v2",
+      "Kelly_Front/kelly_front_s28_v2",
+      "Kelly_Low/kelly_low_s28_v2",
+      "Kelly_Right_Threequarter/kelly_right_threequarter_s28_v2",
+      "Kelly_Left_Threequarter/kelly_left_threequarter_s28_v2",
+      "Hadleigh_Front/hadleigh_front_s1_v2",
+      "Hadleigh_Low/hadleigh_low_s1_v2",
+      "Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s1_v2",
+      "Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s1_v2",
+      "Hadleigh_Front/hadleigh_front_s2_v2",
+      "Hadleigh_Low/hadleigh_low_s2_v2",
+      "Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s2_v2",
+      "Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s2_v2",
+      "Hadleigh_Front/hadleigh_front_s3_v2",
+      "Hadleigh_Low/hadleigh_low_s3_v2",
+      "Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s3_v2",
+      "Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s3_v2",
+      "Hadleigh_Front/hadleigh_front_s4_v2",
+      "Hadleigh_Low/hadleigh_low_s4_v2",
+      "Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s4_v2",
+      "Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s4_v2",
+      "Hadleigh_Front/hadleigh_front_s27_v2",
+      "Hadleigh_Low/hadleigh_low_s27_v2",
+      "Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s27_v2",
+      "Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s27_v2",
+      "Hadleigh_Front/hadleigh_front_s28_v2",
+      "Hadleigh_Low/hadleigh_low_s28_v2",
+      "Hadleigh_Right_Threequarter/hadleigh_right_threequarter_s28_v2",
+      "Hadleigh_Left_Threequarter/hadleigh_left_threequarter_s28_v2",
+      
    ], 
    "pairs to plot": [
       (336, 384), 
@@ -52,7 +100,56 @@ VideoProcessing = {
 }
 
 SignalProcessing = {
-   "files" : ["kelly_front_s2_v1/", "krithika_front_s2_v1/"], 
+   "files" : [
+      "kelly_front_s1_v2/",
+      "kelly_low_s1_v2/",
+      "kelly_right_threequarter_s1_v2/",
+      "kelly_left_threequarter_s1_v2/",
+      "kelly_front_s2_v2/",
+      "kelly_low_s2_v2/",
+      "kelly_right_threequarter_s2_v2/",
+      "kelly_left_threequarter_s2_v2/",
+      "kelly_front_s3_v2/",
+      "kelly_low_s3_v2/",
+      "kelly_right_threequarter_s3_v2/",
+      "kelly_left_threequarter_s3_v2/",
+      "kelly_front_s4_v2/",
+      "kelly_low_s4_v2/",
+      "kelly_right_threequarter_s4_v2/",
+      "kelly_left_threequarter_s4_v2/",
+      "kelly_front_s27_v2/",
+      "kelly_low_s27_v2/",
+      "kelly_right_threequarter_s27_v2/",
+      "kelly_left_threequarter_s27_v2/",
+      "kelly_front_s28_v2/",
+      "kelly_low_s28_v2/",
+      "kelly_right_threequarter_s28_v2/",
+      "kelly_left_threequarter_s28_v2/",
+      "hadleigh_front_s1_v2/",
+      "hadleigh_low_s1_v2/",
+      "hadleigh_right_threequarter_s1_v2/",
+      "hadleigh_left_threequarter_s1_v2/",
+      "hadleigh_front_s2_v2/",
+      "hadleigh_low_s2_v2/",
+      "hadleigh_right_threequarter_s2_v2/",
+      "hadleigh_left_threequarter_s2_v2/",
+      "hadleigh_front_s3_v2/",
+      "hadleigh_low_s3_v2/",
+      "hadleigh_right_threequarter_s3_v2/",
+      "hadleigh_left_threequarter_s3_v2/",
+      "hadleigh_front_s4_v2/",
+      "hadleigh_low_s4_v2/",
+      "hadleigh_right_threequarter_s4_v2/",
+      "hadleigh_left_threequarter_s4_v2/",
+      "hadleigh_front_s27_v2/",
+      "hadleigh_low_s27_v2/",
+      "hadleigh_right_threequarter_s27_v2/",
+      "hadleigh_left_threequarter_s27_v2/",
+      "hadleigh_front_s28_v2/",
+      "hadleigh_low_s28_v2/",
+      "hadleigh_right_threequarter_s28_v2/",
+      "hadleigh_left_threequarter_s28_v2/",
+   ], 
    "datatype" : "landmark_groups",  
    "pipeline" : ["moving_average"], 
    "moving avg window" : 5, 
@@ -63,8 +160,8 @@ SignalProcessing = {
       "cutoff" : 5
    },
    "make plots for": [
-      (336, 384), 
-      (296, 385), 
+      # (336, 384), 
+      # (296, 385), 
    ],
    "should filter?" : False, 
    "pairs to avg" : {
@@ -89,6 +186,48 @@ SignalProcessing = {
    }
 }
 
-SignalComparison = {}
+SignalComparison = {
+   "use processed?" : True, 
+   "to compare fname": "processed", # or "normed" or "landmark_groups" if you want to compare the raw signal
+   "top cutoff" : 0.6, #range from -1 to 1, setting to -1 means nothing is cut off. Filters out all lkeys with sim scores lower than this cutoff
+   "bottom cutoff" : 1, #range from -1 to 1, setting to 1 means nothing is cut off. Filters out all lkeys with diff scores greater than this cutoff
+   "top num" : 150, #if using pipeline to find best performing landmarks, this filters out the top 150 performing pairs for similarity test cases
+   "bottom num" : 2000, #if using pipeline to find best performing landmarks, this filters out the bottom 2000 performing pairs for similarity test cases
+   "make ba plots for" : [
+      ((336, 384), "kelly_angles1"), 
+      ((296, 385) , "kelly_angles2")
+   ], 
+   "run test sets?": True, 
+   "compare test set results?" : True, 
+   "test sets" : {
+      "angle_test_cases" : 
+      {
+         "kelly_angles1" : ["kelly_front_s1_v2/", "kelly_low_s1_v2/", "kelly_right_threequarter_s1_v2/", "kelly_left_threequarter_s1_v2/"],
+         "kelly_angles2" : ["kelly_front_s2_v2/", "kelly_low_s2_v2/", "kelly_right_threequarter_s2_v2/", "kelly_left_threequarter_s2_v2/"],
+         "kelly_angles3" : ["kelly_front_s3_v2/", "kelly_low_s3_v2/", "kelly_right_threequarter_s3_v2/", "kelly_left_threequarter_s3_v2/"],
+         "kelly_angles4" : ["kelly_front_s4_v2/", "kelly_low_s4_v2/", "kelly_right_threequarter_s4_v2/", "kelly_left_threequarter_s4_v2/"],
+         "hadleigh_angles1" : ["hadleigh_front_s1_v2/", "hadleigh_low_s1_v2/", "hadleigh_right_threequarter_s1_v2/", "hadleigh_left_threequarter_s1_v2/"],
+         "hadleigh_angles2" : ["hadleigh_front_s2_v2/", "hadleigh_low_s2_v2/", "hadleigh_right_threequarter_s2_v2/", "hadleigh_left_threequarter_s2_v2/"],
+         "hadleigh_angles3" : ["hadleigh_front_s3_v2/", "hadleigh_low_s3_v2/", "hadleigh_right_threequarter_s3_v2/", "hadleigh_left_threequarter_s3_v2/"],
+         "hadleigh_angles4" : ["hadleigh_front_s4_v2/", "hadleigh_low_s4_v2/", "hadleigh_right_threequarter_s4_v2/", "hadleigh_left_threequarter_s4_v2/"],
+        
+      },
+      "identity_test_cases" :
+      {
+         "identities1" : ["kelly_front_s1_v2/", "hadleigh_front_s1_v2/"],
+         "identities2" : ["kelly_front_s2_v2/", "hadleigh_front_s2_v2/"],
+         "identities3" : ["kelly_front_s3_v2/", "hadleigh_front_s3_v2/"],
+         "identities4" : ["kelly_front_s4_v2/", "hadleigh_front_s4_v2/"],
+      },
+      "utterance_test_cases":  
+      {
+            "utterances1" : ["kelly_front_s28_v2/", "kelly_front_s27_v2/"],
+            "utterances2" : ["kelly_low_s28_v2/", "kelly_low_s27_v2/"],
+            "utterances3" : ["kelly_right_threequarter_s28_v2/", "kelly_right_threequarter_s27_v2/"],
+            "utterances4" : ["hadleigh_front_s28_v2/", "hadleigh_front_s27_v2/"],
+        
+      }
+   }
+}
 
 PipelineComparison = {}
