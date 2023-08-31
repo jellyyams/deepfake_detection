@@ -1,0 +1,14 @@
+Comparing the following files: 
+hadleigh_front_s1_v2/,  hadleigh_low_s1_v2/,  hadleigh_right_threequarter_s1_v2/,  hadleigh_left_threequarter_s1_v2/,  
+
+Correlation cuttoff is 0.6
+landmark(s),  hadleigh_front_s1_v2_vs_hadleigh_low_s1_v2,  hadleigh_front_s1_v2_vs_hadleigh_right_threequarter_s1_v2,  hadleigh_front_s1_v2_vs_hadleigh_left_threequarter_s1_v2,  hadleigh_low_s1_v2_vs_hadleigh_right_threequarter_s1_v2,  hadleigh_low_s1_v2_vs_hadleigh_left_threequarter_s1_v2,  hadleigh_right_threequarter_s1_v2_vs_hadleigh_left_threequarter_s1_v2,  average
+(375, 409),     0.49225,       0.885,       0.46709,       0.77528,       0.74811,       0.66997,       0.67295
+(321, 409),     0.45635,       0.87199,       0.50915,       0.76777,       0.72493,       0.66594,       0.66602
+(81, 181),     0.44037,       0.85447,       0.57212,       0.76442,       0.65887,       0.69593,       0.66436
+(270, 321),     0.43162,       0.86605,       0.46195,       0.75464,       0.69597,       0.66064,       0.64514
+(82, 181),     0.43779,       0.85628,       0.49177,       0.76325,       0.63452,       0.63981,       0.63724
+(287, 327),     0.63899,       0.78711,       0.46524,       0.84125,       0.5085,       0.51368,       0.62579
+(13, 321),     0.5787,       0.89855,       0.44378,       0.79667,       0.48072,       0.49231,       0.61512
+(269, 321),     0.44475,       0.86496,       0.41405,       0.75998,       0.58418,       0.59129,       0.60987
+(0, 321),     0.49641,       0.87174,       0.44651,       0.77514,       0.51551,       0.54103,       0.60772

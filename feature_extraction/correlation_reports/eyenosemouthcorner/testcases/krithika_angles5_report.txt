@@ -1,5 +1,0 @@
-Comparing the following files: 
-krithika_front_s5_v1/groups,  krithika_low_s5_v1/groups,  krithika_threequarter_s5_v1/groups,  
-
-Correlation cuttoff is 0.8
-landmark(s),  krithika_front_s5_v1groups_vs_krithika_low_s5_v1groups,  krithika_front_s5_v1groups_vs_krithika_threequarter_s5_v1groups,  krithika_low_s5_v1groups_vs_krithika_threequarter_s5_v1groups,  average
