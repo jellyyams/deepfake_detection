@@ -1,5 +1,0 @@
-Comparing the following files: 
-hadleigh_front_s4_v2/,  hadleigh_low_s4_v2/,  hadleigh_right_threequarter_s4_v2/,  hadleigh_left_threequarter_s4_v2/,  
-
-Correlation cuttoff is 0.6
-landmark(s),  hadleigh_front_s4_v2_vs_hadleigh_low_s4_v2,  hadleigh_front_s4_v2_vs_hadleigh_right_threequarter_s4_v2,  hadleigh_front_s4_v2_vs_hadleigh_left_threequarter_s4_v2,  hadleigh_low_s4_v2_vs_hadleigh_right_threequarter_s4_v2,  hadleigh_low_s4_v2_vs_hadleigh_left_threequarter_s4_v2,  hadleigh_right_threequarter_s4_v2_vs_hadleigh_left_threequarter_s4_v2,  average
